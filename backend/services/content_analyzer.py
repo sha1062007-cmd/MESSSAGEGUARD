@@ -392,11 +392,36 @@ class ContentAnalyzer:
                 f"SENSITIVE DATA EXPOSED: {', '.join(set(f['type'] for f in exposure_findings))} — credentials MASKED in report"
             )
 
+        # 6.5 Business Email Compromise (BEC) & Wire Fraud signals
+        bec_hits = [
+            phrase for phrase in [
+                "urgent wire", "vendor payment", "update banking details",
+                "executive request", "wire transfer", "payment required",
+                "process an urgent wire", "new bank details", "banking instructions"
+            ] if phrase in combined_text
+        ]
+        if bec_hits:
+            scores.append(90)
+            detected_categories.add("BEC")
+            risk_factors.append(f"Business Email Compromise (BEC) signal detected: {', '.join(bec_hits[:3])}")
+
+        # 6.6 Advance-fee / Lottery / Inheritance Fraud signals
+        fraud_hits = [
+            phrase for phrase in [
+                "million dollars", "inheritance", "lottery", "prize",
+                "you have been selected", "claim your prize", "won the lottery"
+            ] if phrase in combined_text
+        ]
+        if fraud_hits and not bec_hits:
+            scores.append(85)
+            detected_categories.add("FRAUD")
+            risk_factors.append(f"Advance-fee fraud / scam indicators detected: {', '.join(fraud_hits[:3])}")
+
         # Classify categories per SIH forensic requirement:
         # SAFE · SPAM · PHISHING · SPOOFED · IMPERSONATION · MALWARE · BEC · FRAUD · SUSPICIOUS
         if any(att.get("filename", "").lower().endswith(ext) for att in attachments for ext in dangerous_extensions) or any(att.get("sha256") in known_bad_hashes for att in attachments):
             detected_categories.add("MALWARE")
-        if credential_hits or any(u.get("risk_score", 0) >= 50 for u in url_results):
+        if credential_hits or any(u.get("risk_score", 0) >= 50 for u in url_results) or any(u.get("is_shortener") for u in url_results):
             detected_categories.add("PHISHING")
         if spoofing_results.get("header_mismatch") or any("typosquat" in f.lower() for f in spoofing_results.get("factors", [])):
             detected_categories.add("SPOOFED")
@@ -493,13 +518,15 @@ class ContentAnalyzer:
                 # Risk scoring per URL
                 risk = 0
                 if ip_based:
-                    risk = 70
-                elif suspicious_tld:
-                    risk = 60
+                    risk = 85
+                elif is_shortener and suspicious_tld:
+                    risk = 85
                 elif is_shortener:
-                    risk = 45
+                    risk = 75
+                elif suspicious_tld:
+                    risk = 70
                 elif not is_trusted:
-                    risk = 20  # Unknown domain, mild risk
+                    risk = 25  # Unknown domain, mild risk
 
                 results.append({
                     "url": url,

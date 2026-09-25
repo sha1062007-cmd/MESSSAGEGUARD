@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 # Load .env before any other imports that need env vars
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -277,15 +277,29 @@ def calculate_ps106_risk_score(
 
     ml_model_score = max(content_score, int(content_score * 0.85 + geoip_score * 0.15))
 
-    # Exact 60% ML Model + 40% Gmail API Auth weighting
-    final_score = int(ml_model_score * 0.60 + auth_score * 0.40)
+    # High-Risk Content Override Principle:
+    # High-risk content (content_score >= 80, SENSITIVE_DATA_EXPOSURE, BEC, MALWARE) cannot be diluted
+    # down to UNVERIFIED or SAFE by absence of negative headers or neutral delivery.
+    # Combine principle: combine, don't dilute high-threat content.
+    primary_category = content_result.get("primary_category", "")
+    if content_score >= 80 or primary_category in ("SENSITIVE_DATA_EXPOSURE", "BEC", "MALWARE"):
+        # Auth can add to risk if failed, but high content threat directly drives score
+        final_score = max(content_score, int(ml_model_score * 0.70 + auth_score * 0.30))
+    elif has_auth_data:
+        # Standard weighted combination when auth headers are present
+        final_score = int(ml_model_score * 0.60 + auth_score * 0.40)
+    else:
+        # Without auth headers, content risk score directly reflects message risk
+        final_score = ml_model_score
+
     final_score = max(0, min(100, final_score))
 
     # PS106 4-Band Verdict
-    if final_score >= 70:
+    if final_score >= 70 or primary_category == "SENSITIVE_DATA_EXPOSURE":
         verdict = "MALICIOUS"
         risk_band = "HIGH"
         risk_color = "#F44336"
+        final_score = max(final_score, 75)
     elif final_score >= 45:
         verdict = "SUSPICIOUS"
         risk_band = "MEDIUM-HIGH"
@@ -565,6 +579,58 @@ async def analyze_email(request: AnalyzeEmailRequest):
         "content_analysis": content_result,
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
+
+
+class RawEmailIngestRequest(BaseModel):
+    raw_source: str
+
+
+@app.post("/api/ingest/raw", response_model=AnalysisResponse)
+async def ingest_raw_source(request: RawEmailIngestRequest):
+    """
+    Universal RFC 822 / pasted raw email source ingestion.
+    Supports Outlook, Thunderbird, IMAP exports, and raw pasted headers/body.
+    """
+    try:
+        raw_bytes = request.raw_source.encode("utf-8", errors="replace")
+        parsed_email = gmail_service._parse_raw_email(raw_bytes)
+        trigger_req = AnalyzeTriggerRequest(
+            sender=parsed_email.get("sender", ""),
+            subject=parsed_email.get("subject", ""),
+            snippet=(parsed_email.get("text_body") or "")[:150],
+            body=parsed_email.get("text_body") or parsed_email.get("html_body") or "",
+            urls=parsed_email.get("urls", []),
+            authentication_results=parsed_email.get("authentication_results", ""),
+            received_headers=parsed_email.get("received_headers", []),
+        )
+        return await analyze_trigger(trigger_req)
+    except Exception as e:
+        logger.error(f"Raw source ingestion failed: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Failed to parse raw email: {str(e)}")
+
+
+@app.post("/api/ingest/eml", response_model=AnalysisResponse)
+async def ingest_eml_file(file: UploadFile = File(...)):
+    """
+    Universal .eml file upload ingestion.
+    Accepts standard .eml, .msg exported emails from Outlook, Apple Mail, Thunderbird, or Gmail.
+    """
+    try:
+        content = await file.read()
+        parsed_email = gmail_service._parse_raw_email(content)
+        trigger_req = AnalyzeTriggerRequest(
+            sender=parsed_email.get("sender", ""),
+            subject=parsed_email.get("subject", ""),
+            snippet=(parsed_email.get("text_body") or "")[:150],
+            body=parsed_email.get("text_body") or parsed_email.get("html_body") or "",
+            urls=parsed_email.get("urls", []),
+            authentication_results=parsed_email.get("authentication_results", ""),
+            received_headers=parsed_email.get("received_headers", []),
+        )
+        return await analyze_trigger(trigger_req)
+    except Exception as e:
+        logger.error(f".eml ingestion failed: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Failed to parse .eml file: {str(e)}")
 
 
 @app.get("/generate-report/{case_id}")
