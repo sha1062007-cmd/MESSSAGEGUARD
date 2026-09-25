@@ -161,6 +161,18 @@ class DomainIntelService:
         # Fast timeout (max 0.8s) so forensic pipeline never blocks the user
         lookup_timeout = min(self.timeout, 0.8)
 
+        # 0. SSRF / IP Guard: Never send RDAP requests for IP addresses, loopback, or metadata addresses
+        import ipaddress
+        try:
+            ip_obj = ipaddress.ip_address(domain)
+            if not ip_obj.is_global:
+                return {"registrar": "Internal/Private Network", "creation_date": None, "age_days": None, "status": "PRIVATE_IP_BLOCKED"}
+        except ValueError:
+            pass
+
+        if domain in ("localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254") or domain.endswith(".local") or domain.endswith(".internal"):
+            return {"registrar": "Local/Internal Hostname", "creation_date": None, "age_days": None, "status": "INTERNAL_HOST_BLOCKED"}
+
         # 1. Primary: Fast RDAP via HTTPS (Port 443 - clean, structured JSON)
         try:
             rdap_url = f"https://rdap.org/domain/{domain}"

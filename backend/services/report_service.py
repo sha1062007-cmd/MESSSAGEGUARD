@@ -89,7 +89,7 @@ class ReportService:
         case_id = f"MG-{uuid.uuid4().hex[:8].upper()}"
         timestamp = datetime.utcnow().isoformat() + "Z"
 
-        # Build the PDF in memory
+        # Build the PDF in memory with uncompressed page streams for strict forensic auditability
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
@@ -98,6 +98,7 @@ class ReportService:
             leftMargin=20 * mm,
             topMargin=25 * mm,
             bottomMargin=20 * mm,
+            pageCompression=0,
         )
 
         styles = getSampleStyleSheet()

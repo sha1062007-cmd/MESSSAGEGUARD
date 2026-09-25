@@ -244,8 +244,8 @@ class ContentAnalyzer:
         subject = email_data.get("subject", "")
         urls = email_data.get("urls", [])
 
-        # Step 0: Forwarded email extraction
-        raw_body_text = text_body or html_body
+        # Step 0: Forwarded email extraction (bounded to 50KB to protect against ReDoS or huge inputs)
+        raw_body_text = (text_body or html_body)[:50000]
         fwd_meta = self.extract_forwarding_metadata(raw_body_text, subject)
 
         # Content to analyze for attacker NLP: isolate original content if forwarded
