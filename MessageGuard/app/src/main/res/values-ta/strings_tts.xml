@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tts_verdict_safe">இந்தச் செய்தி பாதுகாப்பாகத் தெரிகிறது.</string>
+    <string name="tts_verdict_warning">கவனமாக இருங்கள். இந்த செய்தி சந்தேகமாக தெரிகிறது.</string>
+    <string name="tts_verdict_danger">எச்சரிக்கை. இந்த செய்தி மோசடி இருக்கக்கூடும். எந்த இணைப்பையும் சொடுக்காதீர்கள் அல்லது உங்கள் OTP-ஐ பகிராதீர்கள்.</string>
+
+    <string name="tts_error_scan_failed">ஸ்கேன் தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="tts_error_not_active">பாதுகாப்பு செயலில் இல்லை. முதலில் அதை இயக்கவும்.</string>
+    <string name="tts_error_timed_out">குரல் கேட்கும் நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்.</string>
+</resources>

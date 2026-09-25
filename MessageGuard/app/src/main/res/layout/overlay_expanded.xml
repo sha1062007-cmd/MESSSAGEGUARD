@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/expanded_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="#fce8e6"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="16dp"
+        app:strokeColor="#EA4335"
+        app:strokeWidth="2dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- Title -->
+            <TextView
+                android:id="@+id/tv_expanded_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DANGER — messenger"
+                android:textColor="#c62828"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Score text -->
+            <TextView
+                android:id="@+id/tv_expanded_score"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Risk Score: 90/100"
+                android:textColor="#555"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Risk progress bar -->
+            <ProgressBar
+                android:id="@+id/progress_risk"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:max="100"
+                android:progress="90"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Category + Trust -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/tv_category"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Category: Phishing"
+                    android:textColor="#555"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tv_sender_trust"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Trust: Suspicious"
+                    android:textColor="#555"
+                    android:textSize="13sp"
+                    android:gravity="end" />
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#FFD0CE"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Summary -->
+            <TextView
+                android:id="@+id/tv_expanded_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="This message appears to be a phishing attempt."
+                android:textColor="#333"
+                android:textSize="14sp"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Red Flags -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RED FLAGS:"
+                android:textColor="#c62828"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:id="@+id/ll_flags"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Action -->
+            <TextView
+                android:id="@+id/tv_action"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Action: Do NOT click any links."
+                android:textColor="#c62828"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_save_history"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:text="Save to History"
+                    android:textSize="12sp"
+                    style="@style/Widget.Material3.Button.OutlinedButton" />
+
+                <Button
+                    android:id="@+id/btn_close_expanded"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="Close ✕"
+                    android:textSize="12sp"
+                    android:backgroundTint="#EA4335"
+                    style="@style/Widget.Material3.Button" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</LinearLayout>

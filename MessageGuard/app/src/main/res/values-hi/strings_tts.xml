@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tts_verdict_warning">सावधान रहें। यह संदेश संदिग्ध लग रहा है।</string>
+    <string name="tts_verdict_danger">चेतावनी। यह संदेश धोखाधड़ी हो सकता है। किसी भी लिंक पर क्लिक न करें या अपना OTP साझा न करें।</string>
+
+    <string name="tts_error_scan_failed">स्कैन विफल रहा। कृपया पुन: प्रयास करें।</string>
+    <string name="tts_error_not_active">प्रोटेक्शन सक्रिय नहीं है। कृपया पहले इसे सक्षम करें।</string>
+    <string name="tts_error_timed_out">सुनने का समय समाप्त हुआ। पुन: प्रयास करें।</string>
+</resources>

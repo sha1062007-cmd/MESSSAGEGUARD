@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_loading_title">செய்தி பகுப்பாய்வு செய்யப்படுகிறது…</string>
+    <string name="scan_loading_score">உரை மற்றும் பாதுகாப்பு மாதிரிகள் இயங்குகின்றன…</string>
+    <string name="scan_loading_status">நிலை: ஸ்கேன் செய்கிறது</string>
+    <string name="scan_loading_summary">தேர்ந்தெடுத்த பகுதியில் உள்ள உரை, இணைப்புகள் மற்றும் மோசடி அறிகுறிகள் பகுப்பாய்வு செய்யப்படுகின்றன…</string>
+    <string name="scan_loading_recommendations">• உரை மற்றும் இணைப்புகள் எடுக்கப்படுகின்றன…\n• UPI மற்றும் ஃபிஷிங் அறிகுறிகள் மதிப்பிடப்படுகின்றன…</string>
+
+    <string name="result_verdict_format">தீர்ப்பு: %1$s</string>
+    <string name="result_verdict_safe">பாதுகாப்பானது</string>
+    <string name="result_verdict_warning">எச்சரிக்கை</string>
+    <string name="result_verdict_danger">ஆபத்து</string>
+    <string name="result_verdict_incomplete">ஸ்கேன் முடிக்கப்படவில்லை</string>
+    <string name="result_risk_score_format">ஆபத்து மதிப்பெண்: %1$d%%</string>
+    <string name="result_category_format">வகை: %1$s</string>
+    <string name="result_category_safe">பாதுகாப்பானது</string>
+    <string name="result_category_phishing">ஃபிஷிங்</string>
+    <string name="result_category_scam">மோசடி</string>
+    <string name="result_category_otp_fraud">OTP மோசடி</string>
+    <string name="result_category_fake_job">போலி வேலை</string>
+    <string name="result_category_suspicious">சந்தேகமானது</string>
+    <string name="result_category_spam">ஸ்பேம் (Spam)</string>
+    <string name="result_category_bec_fraud">மின்னஞ்சல் கட்டண மோசடி (BEC)</string>
+    <string name="result_category_spoofing">போலி முகவரி (Spoofing)</string>
+    <string name="result_category_unavailable">பகுப்பாய்வு செய்யப்படவில்லை</string>
+
+    <string name="result_summary_safe">தீங்கிழைக்கும் அறிகுறிகளோ சந்தேகமான இணைப்புகளோ கண்டறியப்படவில்லை.</string>
+    <string name="result_summary_warning">சந்தேகமான அறிகுறிகள் கண்டறியப்பட்டன. எச்சரிக்கையுடன் தொடருங்கள்.</string>
+    <string name="result_summary_danger">அதிக ஆபத்துள்ள மோசடி அறிகுறிகள் கண்டறியப்பட்டன. இணைப்புகளைத் திறக்கவோ முக்கியத் தகவல்களைப் பகிரவோ வேண்டாம்.</string>
+    <string name="result_summary_incomplete">OCR மூலம் உரையைத் தெளிவாக வாசிக்க முடியவில்லை. தமிழ்/பிராந்திய மொழிச் செய்திகளுக்கு அணுகல்தன்மை ஸ்கேனைப் (Accessibility Scan) பயன்படுத்தவும்.</string>
+    <string name="result_recommendations_header">பரிந்துரைகள்:</string>
+    <string name="result_recommendation_safe">உள்ளடக்கம் இயல்பாகத் தெரிகிறது. விழிப்புடன் இருங்கள்.</string>
+    <string name="result_recommendation_warning_one">அனுப்புநரை அதிகாரப்பூர்வ வழியில் சரிபார்க்கவும்.</string>
+    <string name="result_recommendation_warning_two">நம்பகமற்ற பக்கங்களில் உள்நுழைவு தகவல்களை உள்ளிட வேண்டாம்.</string>
+    <string name="result_recommendation_danger_one">இணைப்புகளைத் திறக்கவோ UPI PIN-ஐ உள்ளிடவோ வேண்டாம்.</string>
+    <string name="result_recommendation_danger_two">OTP, கடவுச்சொல் அல்லது வங்கி விவரங்களை ஒருபோதும் பகிர வேண்டாம்.</string>
+    <string name="result_recommendation_danger_three">அனுப்புநரைத் தடுத்து செய்தியை நீக்கவும்.</string>
+    <string name="result_recommendation_incomplete_one">பிராந்திய மொழி உரைகளை 100% துல்லியமாக வாசிக்க அணுகல்தன்மை ஸ்கேனைப் பயன்படுத்தவும்.</string>
+    <string name="result_recommendation_incomplete_two">அல்லது ஆங்கில உரையுடன் மீண்டும் வட்டமிட்டு முயற்சிக்கவும்.</string>
+
+    <string name="result_expand_report">▼ முழு அச்சுறுத்தல் அறிக்கையை விரிவாக்கு</string>
+    <string name="result_collapse_report">▲ முழு அச்சுறுத்தல் அறிக்கையைச் சுருக்கு</string>
+    <string name="result_report_header">ஒவ்வொரு மாதிரியின் ஆபத்து விவரம்</string>
+    <string name="result_component_score_format">%1$d%% ஆபத்து</string>
+    <string name="result_component_not_applicable">பொருந்தாது</string>
+    <string name="result_component_detail_safe">சந்தேகமான அறிகுறி இல்லை</string>
+    <string name="result_component_detail_warning">இந்த அறிகுறியில் எச்சரிக்கையுடன் இருங்கள்</string>
+    <string name="result_component_detail_danger">அதிக ஆபத்துள்ள அறிகுறி கண்டறியப்பட்டது</string>
+    <string name="result_component_upi">UPI கோரிக்கை கண்டறிதல்</string>
+    <string name="result_component_url">இணைப்பு பாதுகாப்பு ஆய்வு</string>
+    <string name="result_component_nlp">உரை வடிவ ஆய்வு</string>
+    <string name="result_component_heuristic">விதி அடிப்படையிலான ஆய்வு</string>
+    <string name="result_component_typosquat">பிராண்ட் போலிமை ஆய்வு</string>
+    <string name="result_component_cloud">மேக AI ஆய்வு</string>
+    <string name="result_component_security">பாதுகாப்பு ஆய்வு</string>
+</resources>

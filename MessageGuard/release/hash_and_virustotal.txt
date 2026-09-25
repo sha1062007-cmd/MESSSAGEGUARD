@@ -1,0 +1,10 @@
+﻿
+Algorithm       Hash                                                                   Path                            
+---------       ----                                                                   ----                            
+SHA256          30566DF8BC38A6F76E422C7C9BB945E273774EACEBC4F9E54A202ECDB295E38E       C:\POC2\MessageGuard\release\...
+
+
+
+VirusTotal Lookup URL:
+https://www.virustotal.com/gui/file/30566DF8BC38A6F76E422C7C9BB945E273774EACEBC4F9E54A202ECDB295E38E
+

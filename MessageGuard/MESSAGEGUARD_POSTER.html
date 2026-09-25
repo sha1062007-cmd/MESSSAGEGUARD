@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MessageGuard — Threat Vision Workflow Model</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0e1a;
+    color: #e0e6ed;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .poster {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 30px 40px 20px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+    padding: 24px 0 16px;
+    border-bottom: 2px solid #1e2a4a;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00E5FF, transparent);
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #00E5FF, #7C4DFF, #FF4081);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  .header .subtitle {
+    font-size: 13px;
+    color: #7B8DA6;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .header .tagline {
+    font-size: 11px;
+    color: #4A5568;
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr 260px;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  /* ── SECTION CARDS ── */
+  .section-card {
+    background: #111827;
+    border: 1px solid #1e2a4a;
+    border-radius: 10px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .section-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 10px 10px 0 0;
+  }
+  .section-card.blue::before { background: linear-gradient(90deg, #2196F3, #00BCD4); }
+  .section-card.purple::before { background: linear-gradient(90deg, #7C4DFF, #E040FB); }
+  .section-card.green::before { background: linear-gradient(90deg, #00E676, #00BFA5); }
+  .section-card.orange::before { background: linear-gradient(90deg, #FF9800, #FF5722); }
+  .section-card.red::before { background: linear-gradient(90deg, #FF4081, #F50057); }
+  .section-card.cyan::before { background: linear-gradient(90deg, #00E5FF, #18FFFF); }
+  .section-card.teal::before { background: linear-gradient(90deg, #26A69A, #009688); }
+  .section-card.pink::before { background: linear-gradient(90deg, #FF80AB, #FF4081); }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title .icon { font-size: 14px; }
+
+  .section-card.blue .section-title { color: #42A5F5; }
+  .section-card.purple .section-title { color: #B388FF; }
+  .section-card.green .section-title { color: #69F0AE; }
+  .section-card.orange .section-title { color: #FFB74D; }
+  .section-card.red .section-title { color: #FF80AB; }
+  .section-card.cyan .section-title { color: #18FFFF; }
+  .section-card.teal .section-title { color: #80CBC4; }
+  .section-card.pink .section-title { color: #FF80AB; }
+
+  /* ── INPUT ITEMS ── */
+  .input-item {
+    background: #0d1321;
+    border: 1px solid #1a2540;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .input-item:hover { border-color: #2196F3; }
+  .input-item .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    color: #42A5F5;
+    background: #1a2540;
+    padding: 2px 5px;
+    border-radius: 3px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .input-item .label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #B0BEC5;
+  }
+  .input-item .desc {
+    font-size: 9px;
+    color: #546E7A;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+
+  /* ── PROCESS FLOW ── */
+  .process-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .flow-stage {
+    background: #0d1321;
+    border: 1px solid #1a2540;
+    border-radius: 8px;
+    padding: 10px 12px;
+    position: relative;
+  }
+  .flow-stage .stage-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .flow-stage .stage-label .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .flow-stage.s1 .stage-label { color: #42A5F5; }
+  .flow-stage.s1 .dot { background: #42A5F5; }
+  .flow-stage.s2 .stage-label { color: #AB47BC; }
+  .flow-stage.s2 .dot { background: #AB47BC; }
+  .flow-stage.s3 .stage-label { color: #FF7043; }
+  .flow-stage.s3 .dot { background: #FF7043; }
+  .flow-stage.s4 .stage-label { color: #66BB6A; }
+  .flow-stage.s4 .dot { background: #66BB6A; }
+  .flow-stage.s5 .stage-label { color: #FFA726; }
+  .flow-stage.s5 .dot { background: #FFA726; }
+  .flow-stage.s6 .stage-label { color: #EF5350; }
+  .flow-stage.s6 .dot { background: #EF5350; }
+  .flow-stage.s7 .stage-label { color: #26C6DA; }
+  .flow-stage.s7 .dot { background: #26C6DA; }
+
+  .flow-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+  }
+  .flow-item {
+    font-size: 9.5px;
+    color: #90A4AE;
+    padding: 3px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    line-height: 1.3;
+  }
+  .flow-item .bullet {
+    color: #546E7A;
+    font-size: 8px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .arrow-down {
+    text-align: center;
+    color: #2a3a5c;
+    font-size: 16px;
+    line-height: 1;
+    margin: -2px 0;
+  }
+
+  /* ── MODEL CARDS ── */
+  .model-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .model-card {
+    background: #0d1321;
+    border: 1px solid #1a2540;
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .model-card .model-name {
+    font-size: 10px;
+    font-weight: 700;
+    color: #E0E0E0;
+    margin-bottom: 3px;
+  }
+  .model-card .model-tech {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: #7C4DFF;
+    background: #1a1a2e;
+    padding: 1px 4px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 3px;
+  }
+  .model-card .model-desc {
+    font-size: 8.5px;
+    color: #607D8B;
+    line-height: 1.3;
+  }
+  .model-card .weight-bar {
+    margin-top: 4px;
+    height: 3px;
+    background: #1a2540;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .model-card .weight-bar .fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  /* ── WEIGHT TABLE ── */
+  .weight-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9px;
+  }
+  .weight-table th {
+    text-align: left;
+    color: #546E7A;
+    font-weight: 600;
+    padding: 3px 4px;
+    border-bottom: 1px solid #1a2540;
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .weight-table td {
+    padding: 3px 4px;
+    color: #B0BEC5;
+    border-bottom: 1px solid #0d1321;
+  }
+  .weight-table .pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 9px;
+  }
+
+  /* ── GUARD RAILS ── */
+  .guard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .guard-item {
+    background: #0d1321;
+    border: 1px solid #1a2540;
+    border-radius: 5px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .guard-item .guard-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    color: #FF9800;
+    background: #1a1a2e;
+    padding: 1px 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .guard-item .guard-text {
+    font-size: 8.5px;
+    color: #90A4AE;
+    line-height: 1.3;
+  }
+
+  /* ── OUTPUT CARDS ── */
+  .output-item {
+    background: #0d1321;
+    border: 1px solid #1a2540;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .output-item .out-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .output-item .out-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #B0BEC5;
+  }
+  .output-item .out-desc {
+    font-size: 8.5px;
+    color: #546E7A;
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+
+  /* ── BOTTOM GRID ── */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  /* ── TECH STACK CHIPS ── */
+  .tech-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .tech-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid #1a2540;
+    background: #0d1321;
+    color: #78909C;
+  }
+  .tech-chip.highlight {
+    border-color: #7C4DFF;
+    color: #B388FF;
+    background: #1a1030;
+  }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .feature-item {
+    font-size: 9px;
+    color: #78909C;
+    padding: 4px 6px;
+    background: #0d1321;
+    border-radius: 4px;
+    border: 1px solid #1a2540;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .feature-item .feat-icon { font-size: 10px; }
+
+  /* ── THRESHOLD BAR ── */
+  .threshold-bar {
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    overflow: hidden;
+    margin: 6px 0;
+    border: 1px solid #1a2540;
+  }
+  .threshold-bar .seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .stat-card {
+    background: #111827;
+    border: 1px solid #1e2a4a;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-card .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #00E5FF, #7C4DFF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-card .stat-label {
+    font-size: 9px;
+    color: #546E7A;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* ── SIGNAL BADGES ── */
+  .signal-row {
+    display: flex;
+    gap: 6px;
+    margin: 8px 0;
+    flex-wrap: wrap;
+  }
+  .signal-badge {
+    font-size: 8.5px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .signal-badge.safe { color: #69F0AE; border-color: #1B5E20; background: #0a1a0f; }
+  .signal-badge.warn { color: #FFD54F; border-color: #F57F17; background: #1a1508; }
+  .signal-badge.danger { color: #FF8A80; border-color: #B71C1C; background: #1a0a0a; }
+  .signal-badge.info { color: #80D8FF; border-color: #01579B; background: #0a1520; }
+
+  /* ── FLOW CONNECTOR ── */
+  .flow-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .flow-connector .line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #2a3a5c, transparent);
+  }
+  .flow-connector .arrow {
+    color: #2a3a5c;
+    font-size: 12px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    padding: 12px 0 4px;
+    border-top: 1px solid #1e2a4a;
+    margin-top: 16px;
+  }
+  .footer .brand {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #42A5F5;
+    text-transform: uppercase;
+  }
+  .footer .copyright {
+    font-size: 8px;
+    color: #37474F;
+    margin-top: 4px;
+  }
+
+  /* ── SPECIAL: ENTROPY VIS ── */
+  .entropy-visual {
+    display: flex;
+    gap: 2px;
+    margin: 6px 0;
+    height: 24px;
+    align-items: flex-end;
+  }
+  .entropy-bar {
+    flex: 1;
+    background: linear-gradient(to top, #1a2540, #7C4DFF);
+    border-radius: 2px 2px 0 0;
+    min-height: 3px;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <div class="header">
+    <h1>🛡️ MessageGuard — Threat Vision</h1>
+    <div class="subtitle">Hybrid On-Device + Cloud AI Phishing & Malware Detection System</div>
+    <div class="tagline">5 Edge ML Models • Gemini Cloud AI Fallback • 6 App Monitoring • Real-Time Overlay Alerts</div>
+  </div>
+
+  <!-- ═══════════ STATS ROW ═══════════ -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value">5</div>
+      <div class="stat-label">On-Device ML Models</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Monitored Apps</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">4</div>
+      <div class="stat-label">Scan Sources</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">7</div>
+      <div class="stat-label">Guard Rails</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAIN 3-COLUMN GRID ═══════════ -->
+  <div class="main-grid">
+
+    <!-- ── LEFT: INPUT COMPONENTS ── -->
+    <div>
+      <!-- Scan Sources -->
+      <div class="section-card blue" style="margin-bottom:12px;">
+        <div class="section-title"><span class="icon">📥</span> SCAN SOURCES</div>
+
+        <div class="input-item">
+          <div class="num">1</div>
+          <div>
+            <div class="label">AccessibilityService Live Scan</div>
+            <div class="desc">Real-time monitoring of Gmail, WhatsApp, Telegram, SMS, Instagram, LinkedIn. Captures window text changes, extracts sender/body/subject via recursive tree traversal.</div>
+          </div>
+        </div>
+
+        <div class="input-item">
+          <div class="num">2</div>
+          <div>
+            <div class="label">Circle-to-Scan (MediaProjection)</div>
+            <div class="desc">User draws freehand circle on screen. Cropped bitmap → ML Kit OCR → ensemble analysis. Persistent VirtualDisplay + ImageReader session.</div>
+          </div>
+        </div>
+
+        <div class="input-item">
+          <div class="num">3</div>
+          <div>
+            <div class="label">Pre-Download File Sandbox</div>
+            <div class="desc">4 triggers: MediaStore ContentObserver, NotificationListener, WhatsApp Accessibility, WorkManager 15min sweep. Quarantine capture → static analysis.</div>
+          </div>
+        </div>
+
+        <div class="input-item">
+          <div class="num">4</div>
+          <div>
+            <div class="label">Voice Command (PTT)</div>
+            <div class="desc">Push-to-talk: "scan this", "scan page", "turn on/off". Bilingual English/Tamil. No wake-word, no background listening.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Data -->
+      <div class="section-card purple">
+        <div class="section-title"><span class="icon">📊</span> INPUT DATA</div>
+
+        <div class="input-item">
+          <div class="num">A</div>
+          <div>
+            <div class="label">Message Text</div>
+            <div class="desc">Sender, subject, body. Tamil/Tanglish/Hinglish auto-detected. Adversarial text normalized.</div>
+          </div>
+        </div>
+
+        <div class="input-item">
+          <div class="num">B</div>
+          <div>
+            <div class="label">URLs</div>
+            <div class="desc">Extracted from text + OCR. Short-link detection (bit.ly, tinyurl, t.co). Domain analysis.</div>
+          </div>
+        </div>
+
+        <div class="input-item">
+          <div class="num">C</div>
+          <div>
+            <div class="label">Screen Capture Bitmap</div>
+            <div class="desc">Cropped or full-screen. Downscaled to max 1280px. Adaptive contrast preprocessing.</div>
+          </div>
+        </div>
+
+        <div class="input-item">
+          <div class="num">D</div>
+          <div>
+            <div class="label">File Binary</div>
+            <div class="desc">PDF/APK/ZIP. Magic bytes, Shannon entropy, structural parser, FlateDecode extraction.</div>
+          </div>
+        </div>
+
+        <div class="input-item">
+          <div class="num">E</div>
+          <div>
+            <div class="label">Sender History</div>
+            <div class="desc">Room DB lookup. Past scan verdicts → reputation score (flat average, no time decay).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CENTER: PROCESS FLOW ── -->
+    <div class="process-flow">
+
+      <!-- Stage 1: Capture -->
+      <div class="flow-stage s1">
+        <div class="stage-label"><span class="dot"></span> STAGE 1 — CAPTURE & PREPROCESSING</div>
+        <div class="flow-items">
+          <div class="flow-item"><span class="bullet">▸</span> AccessibilityService extracts text tree (depth 20, 1000ms debounce, 7s lock)</div>
+          <div class="flow-item"><span class="bullet">▸</span> MediaProjection crops user selection from persistent VirtualDisplay</div>
+          <div class="flow-item"><span class="bullet">▸</span> ContentObserver captures file → quarantine sandbox (SHA-256)</div>
+          <div class="flow-item"><span class="bullet">▸</span> ML Kit OCR: Latin text recognition + adaptive contrast boost</div>
+          <div class="flow-item"><span class="bullet">▸</span> URL extraction: regex + short-link normalization + domain isolation</div>
+          <div class="flow-item"><span class="bullet">▸</span> Text normalization: leetspeak mapping, spacing collapse, repetition reduction</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">⬇</div>
+
+      <!-- Stage 2: Edge ML Ensemble -->
+      <div class="flow-stage s2">
+        <div class="stage-label"><span class="dot"></span> STAGE 2 — ON-DEVICE ML ENSEMBLE (5 MODELS)</div>
+        <div class="model-grid">
+          <div class="model-card">
+            <div class="model-name">URL CNN</div>
+            <div class="model-tech">TFLite • url_cnn_model.tflite</div>
+            <div class="model-desc">Character-level CNN. Trusted domains scored 0.0. Per-URL scoring.</div>
+            <div class="weight-bar"><div class="fill" style="width:25.9%;background:linear-gradient(90deg,#2196F3,#03A9F4)"></div></div>
+          </div>
+          <div class="model-card">
+            <div class="model-name">NLP TF-IDF</div>
+            <div class="model-tech">TFLite • text_nlp_model.tflite</div>
+            <div class="model-desc">8K vocab TF-IDF. 96.5% acc, 34.8K training msgs. Bank/Retailer guard caps at 0.22.</div>
+            <div class="weight-bar"><div class="fill" style="width:29.6%;background:linear-gradient(90deg,#7C4DFF,#B388FF)"></div></div>
+          </div>
+          <div class="model-card">
+            <div class="model-name">BODMAS Structural</div>
+            <div class="model-tech">ONNX • url_detector.onnx + voting_0/1/2.onnx</div>
+            <div class="model-desc">14-feature XGBoost tabular classifier + calibrated voting ensemble.</div>
+            <div class="weight-bar"><div class="fill" style="width:18.5%;background:linear-gradient(90deg,#FF9800,#FFB74D)"></div></div>
+          </div>
+          <div class="model-card">
+            <div class="model-name">Typosquat / Homograph</div>
+            <div class="model-tech">Kotlin • Levenshtein + IDN + Punycode</div>
+            <div class="model-desc">Brand domain mimicking. Cyrillic/Greek/Arabic homoglyph detection. Mixed-script.</div>
+            <div class="weight-bar"><div class="fill" style="width:14.8%;background:linear-gradient(90deg,#EF5350,#FF8A80)"></div></div>
+          </div>
+          <div class="model-card" style="grid-column: span 2;">
+            <div class="model-name">Sender Reputation</div>
+            <div class="model-tech">Room DB • AnalysisHistoryDatabase</div>
+            <div class="model-desc">Historical threat ratio from past scans. DANGER=1.0, WARNING=0.5, SAFE=0.0. Flat average (no time decay).</div>
+            <div class="weight-bar"><div class="fill" style="width:11.2%;background:linear-gradient(90deg,#26A69A,#80CBC4)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">⬇</div>
+
+      <!-- Stage 3: Ensemble Scoring -->
+      <div class="flow-stage s3">
+        <div class="stage-label"><span class="dot"></span> STAGE 3 — ENSEMBLE SCORING & GUARD RAILS</div>
+        <div class="flow-items">
+          <div class="flow-item"><span class="bullet">▸</span> <b>Weighted Sum:</b> uS×0.259 + nS×0.296 + bS×0.185 + tS×0.148 + rep×0.112</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Short-link Floor:</b> URL shortener + urgency text → BODMAS floor at 0.5</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Corroboration Gate:</b> 1 model alone → capped at 69 (WARNING max). 2+ → uncapped</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Exemptions:</b> Typosquat ≥0.9 or Tamil heuristic ≥0.70 bypass gate</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Cloud Guard:</b> Local SAFE + cloud DANGER → capped at 25–38</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Disagreement Detection:</b> std > 0.35 + no model > 0.70 → UNCERTAIN</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">⬇</div>
+
+      <!-- Stage 4: Cloud AI -->
+      <div class="flow-stage s4">
+        <div class="stage-label"><span class="dot"></span> STAGE 4 — CLOUD AI FALLBACK (Gemini)</div>
+        <div class="flow-items">
+          <div class="flow-item"><span class="bullet">▸</span> <b>Trigger:</b> Score 35–65 (disagreement boundary). Below/above = local-only.</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Fallback Chain:</b> gemini-2.5-flash → 2.5-flash-lite → flash-latest → 3.5-flash → 3.5-flash-lite → 3.1-flash-lite</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Blending:</b> 55% local ML + 45% cloud AI. Temperature 0.0 (deterministic).</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Privacy:</b> OTPs/PINs/CVV masked before transmission. 5s timeout. 10min cache.</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">⬇</div>
+
+      <!-- Stage 5: Decision -->
+      <div class="flow-stage s5">
+        <div class="stage-label"><span class="dot"></span> STAGE 5 — VERDICT DECISION</div>
+        <div class="threshold-bar">
+          <div class="seg" style="width:40%;background:#2E7D32;">SAFE 0–39</div>
+          <div class="seg" style="width:30%;background:#E65100;">WARNING 40–69</div>
+          <div class="seg" style="width:30%;background:#C62828;">DANGER 70–100</div>
+        </div>
+        <div class="flow-items">
+          <div class="flow-item"><span class="bullet">▸</span> <b>Corroboration Gate:</b> 0 models → max 39 | 1 model → max 69 | 2+ → uncapped</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Uncertainty:</b> Model disagreement → UNCERTAIN verdict (explicit, not silent)</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Sandbox Thresholds:</b> SAFE 0–19 | SUSPICIOUS 20–59 | MALICIOUS 60–100</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">⬇</div>
+
+      <!-- Stage 6: Explainability -->
+      <div class="flow-stage s6">
+        <div class="stage-label"><span class="dot"></span> STAGE 6 — EXPLAINABILITY & FEEDBACK</div>
+        <div class="flow-items">
+          <div class="flow-item"><span class="bullet">▸</span> <b>Why Flagged:</b> Per-model score breakdown + fired signals + corroboration status</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Explainability JSON:</b> Span → reason mapping for every detected threat pattern</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>User Feedback:</b> Correct/Incorrect buttons → AdaptiveTrustEngine weight adjustment</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Disagreement Logger:</b> Tracks model conflicts for error analysis (500 event ring buffer)</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">⬇</div>
+
+      <!-- Stage 7: Persistence -->
+      <div class="flow-stage s7">
+        <div class="stage-label"><span class="dot"></span> STAGE 7 — PERSISTENCE & EXPORT</div>
+        <div class="flow-items">
+          <div class="flow-item"><span class="bullet">▸</span> <b>Room DB:</b> analysis_history (22 fields) + scan_reports (file sandbox results)</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Excel Export:</b> Apache POI weekly auto-export via WorkManager</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Threat DB:</b> Circle-to-scan results persisted to ThreatDatabase</div>
+          <div class="flow-item"><span class="bullet">▸</span> <b>Email Digest:</b> Resend API HTML alerts with 1-hour cooldown per content hash</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: OUTPUT COMPONENTS ── -->
+    <div>
+      <!-- Alerts -->
+      <div class="section-card green" style="margin-bottom:12px;">
+        <div class="section-title"><span class="icon">🔔</span> ALERT OUTPUTS</div>
+
+        <div class="output-item">
+          <div class="out-icon">🫧</div>
+          <div>
+            <div class="out-label">Floating Overlay Card</div>
+            <div class="out-desc">Animated verdict card with risk score (count-up), component breakdown, recommendations. SAFE auto-dismiss 5s.</div>
+          </div>
+        </div>
+
+        <div class="output-item">
+          <div class="out-icon">🔊</div>
+          <div>
+            <div class="out-label">TTS Voice Alert</div>
+            <div class="out-desc">Bilingual English/Tamil. Vibration: triple-pulse DANGER, double-pulse WARNING. Chimes: error/nack/beep.</div>
+          </div>
+        </div>
+
+        <div class="output-item">
+          <div class="out-icon">📧</div>
+          <div>
+            <div class="out-label">Email Alert (Resend API)</div>
+            <div class="out-desc">HTML template: threat level, AI summary, brand mimicry, TLD risk. 1-hour cooldown. Retry on 5xx.</div>
+          </div>
+        </div>
+
+        <div class="output-item">
+          <div class="out-icon">📲</div>
+          <div>
+            <div class="out-label">System Notification</div>
+            <div class="out-desc">Sandbox results: HIGH importance channel. Deep-link to ScanReportDetailActivity.</div>
+          </div>
+        </div>
+
+        <div class="output-item">
+          <div class="out-icon">🏦</div>
+          <div>
+            <div class="out-label">Banking Overlay Alert</div>
+            <div class="out-desc">Detects overlay phishing on 10+ Indian banking apps. Certificate pinning verification.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Report UI -->
+      <div class="section-card orange" style="margin-bottom:12px;">
+        <div class="section-title"><span class="icon">📋</span> REPORT UI</div>
+
+        <div class="output-item">
+          <div class="out-icon">📊</div>
+          <div>
+            <div class="out-label">Detail Activity</div>
+            <div class="out-desc">Full forensic report: verdict, ML score, AI score, breakdown bars, sender trust, explainability, user feedback.</div>
+          </div>
+        </div>
+
+        <div class="output-item">
+          <div class="out-icon">📁</div>
+          <div>
+            <div class="out-label">Scan Report Detail</div>
+            <div class="out-desc">File sandbox report: verdict, structural score, Shannon entropy, SHA-256, findings list, false-positive feedback.</div>
+          </div>
+        </div>
+
+        <div class="output-item">
+          <div class="out-icon">📜</div>
+          <div>
+            <div class="out-label">History List</div>
+            <div class="out-desc">Filterable by verdict (SAFE/WARNING/DANGER/UNCERTAIN). Per-item: sender, app, risk score, timestamp.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guard Rails -->
+      <div class="section-card red">
+        <div class="section-title"><span class="icon">🛡️</span> 7 GUARD RAILS</div>
+        <div class="guard-list">
+          <div class="guard-item">
+            <div class="guard-num">1</div>
+            <div class="guard-text"><b>Corroboration Gate:</b> Single model alone cannot push to DANGER or WARNING. Requires 2+ independent signals.</div>
+          </div>
+          <div class="guard-item">
+            <div class="guard-num">2</div>
+            <div class="guard-text"><b>Gate Exemptions:</b> Confirmed typosquat (≥0.9) or Tamil heuristic (≥0.70) bypass the single-model cap.</div>
+          </div>
+          <div class="guard-item">
+            <div class="guard-num">3</div>
+            <div class="guard-text"><b>Bank/Retailer NLP Cap:</b> Legitimate bank SMS or retailer promos cap NLP contribution at 0.22.</div>
+          </div>
+          <div class="guard-item">
+            <div class="guard-num">4</div>
+            <div class="guard-text"><b>Cloud Corroboration Guard:</b> When all local models say SAFE, cloud alone cannot produce DANGER.</div>
+          </div>
+          <div class="guard-item">
+            <div class="guard-num">5</div>
+            <div class="guard-text"><b>Short-link + Urgency Floor:</b> URL shortener combined with urgency text → BODMAS floor at 0.5.</div>
+          </div>
+          <div class="guard-item">
+            <div class="guard-num">6</div>
+            <div class="guard-text"><b>Ultra-clean Local Guard:</b> ML &lt;15% + no corroboration + cloud DANGER → capped to 39.</div>
+          </div>
+          <div class="guard-item">
+            <div class="guard-num">7</div>
+            <div class="guard-text"><b>Email Quality Gate:</b> Message must be ≥15 chars and ≥3 words before sending email alert.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ BOTTOM GRID ═══════════ -->
+  <div class="bottom-grid">
+
+    <!-- Tech Stack -->
+    <div class="section-card cyan">
+      <div class="section-title"><span class="icon">⚙️</span> TECH STACK</div>
+      <div class="tech-chips">
+        <div class="tech-chip highlight">Kotlin</div>
+        <div class="tech-chip highlight">TFLite 2.17</div>
+        <div class="tech-chip highlight">ONNX Runtime 1.16</div>
+        <div class="tech-chip">Room DB</div>
+        <div class="tech-chip">OkHttp 4.12</div>
+        <div class="tech-chip">Retrofit 2.9</div>
+        <div class="tech-chip">ML Kit OCR</div>
+        <div class="tech-chip">ML Kit Barcode</div>
+        <div class="tech-chip">Gemini API</div>
+        <div class="tech-chip">Coroutines</div>
+        <div class="tech-chip">WorkManager</div>
+        <div class="tech-chip">Apache POI</div>
+        <div class="tech-chip">Resend API</div>
+        <div class="tech-chip">Material3</div>
+        <div class="tech-chip">Compose</div>
+        <div class="tech-chip">ViewBinding</div>
+        <div class="tech-chip">Gson</div>
+        <div class="tech-chip">Security Crypto</div>
+      </div>
+    </div>
+
+    <!-- Supported Apps -->
+    <div class="section-card teal">
+      <div class="section-title"><span class="icon">📱</span> MONITORED APPS</div>
+      <div class="input-item">
+        <div class="num">G</div>
+        <div>
+          <div class="label">Gmail</div>
+          <div class="desc">com.google.android.gm — Email phishing, invoice scams</div>
+        </div>
+      </div>
+      <div class="input-item">
+        <div class="num">W</div>
+        <div>
+          <div class="label">WhatsApp</div>
+          <div class="desc">com.whatsapp — OTP fraud, UPI scams, job offers</div>
+        </div>
+      </div>
+      <div class="input-item">
+        <div class="num">T</div>
+        <div>
+          <div class="label">Telegram</div>
+          <div class="desc">org.telegram.messenger — Crypto scams, fake channels</div>
+        </div>
+      </div>
+      <div class="input-item">
+        <div class="num">S</div>
+        <div>
+          <div class="label">SMS</div>
+          <div class="desc">com.android.mms — Bank spoofing, delivery scams</div>
+        </div>
+      </div>
+      <div class="input-item">
+        <div class="num">I</div>
+        <div>
+          <div class="label">Instagram</div>
+          <div class="desc">com.instagram.android — DM phishing, fake giveaways</div>
+        </div>
+      </div>
+      <div class="input-item">
+        <div class="num">L</div>
+        <div>
+          <div class="label">LinkedIn</div>
+          <div class="desc">com.linkedin.android — Job scams, credential harvesting</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Language Support -->
+    <div class="section-card pink">
+      <div class="section-title"><span class="icon">🌐</span> LANGUAGE & SIGNALS</div>
+
+      <div style="margin-bottom:8px;">
+        <div style="font-size:9px;color:#FF80AB;font-weight:600;margin-bottom:4px;">TAMIL SCAM KEYWORDS (12)</div>
+        <div style="font-size:8px;color:#78909C;line-height:1.5;">வங்கி • கணக்கு • கடவுச்சொல் • பின் • ஓடிபி • இணைப்பு • பணம் • வெற்றி • அவசரம் • உடனே • முடக்கப்பட்டது • சரிபார்க்கவும்</div>
+      </div>
+
+      <div style="margin-bottom:8px;">
+        <div style="font-size:9px;color:#FF80AB;font-weight:600;margin-bottom:4px;">TANGLISH TRIGGERS (11)</div>
+        <div style="font-size:8px;color:#78909C;line-height:1.5;">vangi • kanakku • panam • kaasu • udane • seekiram • block aagum • verify pannunga • otp anuppunga • pin anuppunga • link click pannunga</div>
+      </div>
+
+      <div style="margin-bottom:8px;">
+        <div style="font-size:9px;color:#FF80AB;font-weight:600;margin-bottom:4px;">THREAT SIGNAL POLICY</div>
+        <div class="signal-row">
+          <div class="signal-badge danger">Urgency</div>
+          <div class="signal-badge danger">Credential Request</div>
+          <div class="signal-badge warn">Action Request</div>
+          <div class="signal-badge warn">Money Lure</div>
+          <div class="signal-badge info">Callback Scam</div>
+        </div>
+        <div style="font-size:8px;color:#546E7A;margin-top:3px;">≥2 co-occurring signals required to fire. Safety advice excluded.</div>
+      </div>
+
+      <div>
+        <div style="font-size:9px;color:#FF80AB;font-weight:600;margin-bottom:4px;">ADVERSARIAL NORMALIZATION</div>
+        <div style="font-size:8px;color:#78909C;line-height:1.5;">Leetspeak mapping • Intra-word spacing collapse • Character repetition reduction • Fuzzy matching (Levenshtein ≤1/2)</div>
+      </div>
+    </div>
+
+    <!-- Key Numbers -->
+    <div class="section-card orange">
+      <div class="section-title"><span class="icon">🔢</span> KEY NUMBERS</div>
+      <table class="weight-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>NLP Vocab Size</td><td class="pct">8,000 tokens</td></tr>
+        <tr><td>NLP Max Sequence</td><td class="pct">60 tokens</td></tr>
+        <tr><td>NLP Training Set</td><td class="pct">34,800 messages</td></tr>
+        <tr><td>NLP Accuracy</td><td class="pct">96.5%</td></tr>
+        <tr><td>URL CNN Features</td><td class="pct">Char-level embedding</td></tr>
+        <tr><td>BODMAS Features</td><td class="pct">14 tabular</td></tr>
+        <tr><td>OCR Max Width</td><td class="pct">1,280 px</td></tr>
+        <tr><td>Debounce Delay</td><td class="pct">1,000 ms</td></tr>
+        <tr><td>Analysis Lock</td><td class="pct">7,000 ms</td></tr>
+        <tr><td>Content Dedup</td><td class="pct">300,000 ms</td></tr>
+        <tr><td>Cloud Timeout</td><td class="pct">5,000 ms</td></tr>
+        <tr><td>Cloud Cache TTL</td><td class="pct">10 min</td></tr>
+        <tr><td>Email Cooldown</td><td class="pct">1 hour</td></tr>
+        <tr><td>Sandbox Max Decompress</td><td class="pct">20 MB</td></tr>
+        <tr><td>Sweep Interval</td><td class="pct">15 min</td></tr>
+        <tr><td>Weight Range</td><td class="pct">0.05 – 0.60</td></tr>
+        <tr><td>Disagreement Threshold</td><td class="pct">0.35 std dev</td></tr>
+        <tr><td>Feedback Step</td><td class="pct">0.01 – 0.02</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════ FOOTER ═══════════ -->
+  <div class="footer">
+    <div class="brand">🛡️ MessageGuard — Threat Vision Workflow Model</div>
+    <div class="copyright">Hybrid On-Device ML + Cloud AI Phishing Detection System • Kotlin • TFLite • ONNX Runtime • Gemini API • 2024–2025</div>
+  </div>
+
+</div>
+</body>
+</html>

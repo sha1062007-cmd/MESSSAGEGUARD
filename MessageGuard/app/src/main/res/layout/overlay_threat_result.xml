@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/result_card_container"
+    android:layout_width="320dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_overlay_safe"
+    android:elevation="24dp"
+    android:padding="16dp">
+
+    <!-- Header layout containing Verdict and Dismiss button -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/tv_verdict"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:text="VERDICT: SAFE"
+            android:textColor="#34a853"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.04" />
+
+        <TextView
+            android:id="@+id/btn_dismiss"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="✕"
+            android:textColor="#90A4AE"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="6dp" />
+    </RelativeLayout>
+
+    <!-- Risk score & Category -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp">
+
+        <TextView
+            android:id="@+id/tv_score"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Risk Score: 5%"
+            android:textColor="#E0E0E0"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="16dp" />
+
+        <TextView
+            android:id="@+id/tv_category"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Category: SAFE"
+            android:textColor="#B0BEC5"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- Forensic Provenance & Forwarding Banner (Section 2 & 5) -->
+    <TextView
+        android:id="@+id/tv_forwarding_provenance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:background="#26FFC107"
+        android:padding="6dp"
+        android:textColor="#FFE082"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tv_forensic_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:textColor="#90CAF9"
+        android:textSize="11sp"
+        android:layout_marginBottom="8dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1AFFFFFF"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Reason description -->
+    <TextView
+        android:id="@+id/tv_reason"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No known threat markers or suspicious URLs found."
+        android:textColor="#ECEFF1"
+        android:textSize="13sp"
+        android:lineSpacingExtra="3dp"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Action recommendations header -->
+    <TextView
+        android:id="@+id/tv_rec_header"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="RECOMMENDATIONS:"
+        android:textColor="#90A4AE"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.05"
+        android:layout_marginBottom="4dp" />
+
+    <!-- Recommendations text container -->
+    <TextView
+        android:id="@+id/tv_recommendations"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="• Be careful with unknown links.\n• Stay vigilant."
+        android:textColor="#B0BEC5"
+        android:textSize="12sp"
+        android:lineSpacingExtra="4dp"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Expandable Bixby-Style Full Report Section -->
+    <TextView
+        android:id="@+id/btn_toggle_report"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="▼ Expand Full Threat Report"
+        android:textColor="#00E5FF"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <LinearLayout
+        android:id="@+id/layout_report_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingTop="8dp">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#26FFFFFF"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_report_header"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PER-MODEL RISK BREAKDOWN"
+            android:textColor="#90A4AE"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="6dp" />
+
+        <LinearLayout
+            android:id="@+id/container_components"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <!-- Additive Investigation & Attribution Support (SIH26106) -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#26FFFFFF"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:id="@+id/tv_investigation_header"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="INVESTIGATION &amp; CORRELATION"
+            android:textColor="#00E5FF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_investigation_trace"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#ECEFF1"
+            android:textSize="10sp"
+            android:lineSpacingExtra="2dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/btn_view_full_case"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#1A00E5FF"
+            android:gravity="center"
+            android:padding="8dp"
+            android:text="🔍 Open Full Forensic Investigation &amp; Case"
+            android:textColor="#00E5FF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+</LinearLayout>

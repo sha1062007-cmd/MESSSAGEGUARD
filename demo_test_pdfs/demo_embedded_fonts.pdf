@@ -1,0 +1,32 @@
+%PDF-1.4
+
+2 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+
+3 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+
+4 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792]
+   /Contents 5 0 R /Resources << /Font << /F1 6 0 R /F2 7 0 R >> >> >>
+endobj
+
+5 0 obj
+<< /Length 80 >>
+stream
+BT /F1 14 Tf 100 750 Td (Report Title) Tj ET
+BT /F2 10 Tf 100 720 Td (This is body text in a different font.) Tj ET
+endstream
+endobj
+
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>
+endobj
+
+%%EOF

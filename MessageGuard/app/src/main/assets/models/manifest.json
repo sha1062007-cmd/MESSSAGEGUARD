@@ -1,0 +1,68 @@
+{
+  "version": "2.0.0",
+  "generated_at": "2026-09-23T15:45:00Z",
+  "models": [
+    {
+      "model_id": "url_cnn_v1",
+      "version": "1.0.0",
+      "type": "ONNX",
+      "file_path": "url_detector.onnx",
+      "status": "active",
+      "weight": 0.35,
+      "description": "On-device deep URL character-level CNN detector"
+    },
+    {
+      "model_id": "text_nlp_v1",
+      "version": "1.0.0",
+      "type": "TFLITE",
+      "file_path": "text_nlp_model.tflite",
+      "status": "active",
+      "weight": 0.25,
+      "description": "On-device TF-IDF NaiveBayes/logistic classifier for phishing/scam text"
+    },
+    {
+      "model_id": "bodmas_v1",
+      "version": "1.0.0",
+      "type": "ONNX",
+      "file_path": "full_bodmas.onnx",
+      "status": "disabled_awaiting_spec",
+      "weight": 0.0,
+      "description": "BODMAS PE malware ONNX model (disabled pending 2381-feature extractor)"
+    },
+    {
+      "model_id": "bec_classifier",
+      "version": "2.0.0",
+      "type": "ONNX",
+      "file_path": "models/xgb_bec_detector.onnx",
+      "status": "active",
+      "weight": 0.30,
+      "description": "21-feature XGBoost Business Email Compromise and Financial Urgency classifier"
+    },
+    {
+      "model_id": "xgb_url_detector",
+      "version": "2.0.0",
+      "type": "ONNX",
+      "file_path": "models/xgb_url_detector.onnx",
+      "status": "active",
+      "weight": 0.20,
+      "description": "53-feature XGBoost URL lexical entropy and structural threat detector"
+    },
+    {
+      "model_id": "gemini_ensemble",
+      "version": "1.5.0",
+      "type": "CLOUD_LLM",
+      "status": "active",
+      "weight": 0.30,
+      "description": "Gemini standing ensemble member with PII redaction and contextual semantic verification"
+    },
+    {
+      "model_id": "email_fraud_nlp",
+      "version": "2.0.0",
+      "type": "ONNX_QUANTIZED",
+      "file_path": "models/distilbert_email_int8.onnx",
+      "status": "stub",
+      "weight": 0.0,
+      "description": "Quantized DistilBERT 5-class sequence classifier (ready for on-device/Cloud Run dispatch)"
+    }
+  ]
+}

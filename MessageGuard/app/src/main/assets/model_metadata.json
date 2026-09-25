@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-04-07",
+  "models": {
+    "url_cnn": {
+      "file": "url_cnn_model.tflite",
+      "type": "tflite",
+      "accuracy": 0.9994,
+      "description": "CNN model for URL-based spam detection"
+    },
+    "text_nlp": {
+      "file": "text_nlp_model.tflite",
+      "type": "tflite_flex",
+      "accuracy": 0.9963,
+      "description": "NLP model for message text classification"
+    },
+    "bodmas": {
+      "file": "full_bodmas.onnx",
+      "type": "onnx",
+      "accuracy": 0.9998,
+      "description": "BODMAS feature-based spam detection"
+    }
+  },
+  "ensemble": {
+    "accuracy": 0.9994,
+    "strategy": "weighted_vote",
+    "description": "Ensemble of URL CNN + Text NLP + BODMAS"
+  },
+  "evaluation": {
+    "confusion_matrix": {
+      "TP": 2481,
+      "FP": 0,
+      "FN": 3,
+      "TN": 2516
+    },
+    "total_samples": 5000
+  }
+}

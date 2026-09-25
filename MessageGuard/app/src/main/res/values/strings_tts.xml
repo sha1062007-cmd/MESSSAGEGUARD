@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tts_verdict_safe">This message appears safe.</string>
+    <string name="tts_verdict_warning">Be careful. This message looks suspicious.</string>
+    <string name="tts_verdict_danger">Warning. This message may be a scam. Do not click any link or share your OTP.</string>
+
+    <string name="tts_error_scan_failed">Scan failed. Please try again.</string>
+    <string name="tts_error_not_active">Protection is not active. Please enable it first.</string>
+    <string name="tts_error_timed_out">Listening timed out. Try again.</string>
+</resources>

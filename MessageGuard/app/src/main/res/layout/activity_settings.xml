@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#f8f9fa">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:id="@+id/layout_api_key_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Claude API Key"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                app:endIconMode="password_toggle"
+                android:hint="sk-ant-api03-..."
+                android:layout_marginBottom="8dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_api_key"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_test_key"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Test API Key"/>
+
+            <ProgressBar
+                android:id="@+id/progress_test"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="8dp"/>
+
+            <TextView
+                android:id="@+id/tv_test_result"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="14sp"/>
+
+        </LinearLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_dark_theme"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dark Mode Theme (Cyber Obsidian)"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_floating_bubble"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show On-Screen Floating Bubble Icon"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_log_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Log all scans (default: DANGER + WARNING only)"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Export Now Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_export_excel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Export Logs to Excel"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Weekly Auto-Export Switch -->
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_weekly_export"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Weekly Auto-Export Scans"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Force Tamil Language alerts switch -->
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_language_tamil"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Force Tamil Language TTS Alerts"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Auto-Delete Logs Retention Choice -->
+        <TextView android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto-Delete Logs Retention"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#5f6368"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_retention"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_retention_7"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="7 Days"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_retention_30"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="30 Days"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_retention_90"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="90 Days"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_retention_never"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Never"
+                android:checked="true"/>
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Model Confidence & Adaptive Trust Weights Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardElevation="2dp"
+            app:cardCornerRadius="12dp"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Adaptive Trust Engine (Live Model Weights)"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="#16202C" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Weights dynamically tune from user feedback (Clamped: 5%–60%)"
+                    android:textSize="11sp"
+                    android:textColor="#5F6368"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- URL CNN Weight -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="URL CNN Model"
+                        android:textSize="12sp"
+                        android:textColor="#3C4043" />
+                    <TextView
+                        android:id="@+id/tv_weight_url"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="35%"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#1A73E8" />
+                </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/progress_weight_url"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:progress="35"
+                    android:max="100"
+                    android:progressTint="#1A73E8"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- Text NLP Weight -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Text NLP Model"
+                        android:textSize="12sp"
+                        android:textColor="#3C4043" />
+                    <TextView
+                        android:id="@+id/tv_weight_nlp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="40%"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#00B0FF" />
+                </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/progress_weight_nlp"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:progress="40"
+                    android:max="100"
+                    android:progressTint="#00B0FF"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- BODMAS Weight -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="BODMAS Core Model"
+                        android:textSize="12sp"
+                        android:textColor="#3C4043" />
+                    <TextView
+                        android:id="@+id/tv_weight_bodmas"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="25%"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#AA00FF" />
+                </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/progress_weight_bodmas"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:progress="25"
+                    android:max="100"
+                    android:progressTint="#AA00FF"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- Typosquat Weight -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Typosquatting Engine"
+                        android:textSize="12sp"
+                        android:textColor="#3C4043" />
+                    <TextView
+                        android:id="@+id/tv_weight_typosquat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="20%"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#FF6D00" />
+                </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/progress_weight_typosquat"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:progress="20"
+                    android:max="100"
+                    android:progressTint="#FF6D00"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- Sender Reputation Weight -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Sender Reputation"
+                        android:textSize="12sp"
+                        android:textColor="#3C4043" />
+                    <TextView
+                        android:id="@+id/tv_weight_reputation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="15%"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#00E676" />
+                </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/progress_weight_reputation"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:progress="15"
+                    android:max="100"
+                    android:progressTint="#00E676"
+                    android:layout_marginBottom="12dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_reset_weights"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:text="Reset Weights to Defaults"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Monitor Apps"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_gmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Gmail"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_whatsapp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="WhatsApp"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_telegram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Telegram"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_sms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SMS"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_instagram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Instagram"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_linkedin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LinkedIn"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_grant_notification_listener"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grant Notification Listener Permission"
+            android:visibility="gone"
+            android:layout_marginTop="16dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_clear_history"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Clear All History"
+            android:layout_marginTop="24dp"/>
+
+    </LinearLayout>
+</ScrollView>

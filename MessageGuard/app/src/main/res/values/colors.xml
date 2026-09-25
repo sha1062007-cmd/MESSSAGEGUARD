@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cyber Obsidian Core Color System -->
+    <color name="colorPrimary">#00E5FF</color>
+    <color name="colorPrimaryDark">#00B0FF</color>
+    <color name="colorAccent">#00E5FF</color>
+
+    <!-- Standardized Security Severity Tokens (WCAG AA Compliant) -->
+    <color name="ColorSafe">#00E676</color>
+    <color name="ColorWarn">#FFC400</color>
+    <color name="ColorDanger">#FF1744</color>
+    <color name="ColorAccent">#00E5FF</color>
+
+    <color name="safe_green">#00E676</color>
+    <color name="warning_yellow">#FFC400</color>
+    <color name="danger_red">#FF1744</color>
+
+    <!-- Dark Surface & Background Tokens -->
+    <color name="bg_obsidian_dark">#0A0E14</color>
+    <color name="surface_obsidian_card">#121824</color>
+    <color name="surface_obsidian_stroke">#1E293B</color>
+
+    <color name="safe_bg">#0D2818</color>
+    <color name="warning_bg">#2C2200</color>
+    <color name="danger_bg">#2D0B0E</color>
+    
+    <color name="text_high_contrast">#F8FAFC</color>
+    <color name="text_medium_contrast">#94A3B8</color>
+
+    <color name="ic_launcher_background">#0A0E14</color>
+</resources>

@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIH 2025 — AI-Enabled Skill Intelligence Platform</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --navy: #0a1628;
+    --navy-light: #122240;
+    --navy-card: #162a4a;
+    --orange: #FF6B35;
+    --orange-light: #FF8F5E;
+    --orange-glow: rgba(255,107,53,0.3);
+    --white: #FFFFFF;
+    --gray: #94A3B8;
+    --gray-light: #CBD5E1;
+    --green: #10B981;
+    --blue: #3B82F6;
+    --purple: #8B5CF6;
+    --red: #EF4444;
+    --cyan: #06B6D4;
+  }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: #000;
+    color: var(--white);
+  }
+
+  .slide {
+    width: 1280px;
+    height: 720px;
+    margin: 20px auto;
+    background: var(--navy);
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* ── SLIDE DECORATIONS ── */
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, var(--orange-glow), transparent 70%);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .slide::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--orange), var(--orange-light), var(--orange));
+  }
+
+  /* ── SIH HEADER BAR ── */
+  .sih-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(135deg, var(--navy-light), var(--navy));
+    border-bottom: 2px solid var(--orange);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    z-index: 10;
+  }
+  .sih-bar .sih-logo {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 2px;
+  }
+  .sih-bar .sih-info {
+    font-size: 11px;
+    color: var(--gray);
+    letter-spacing: 1px;
+  }
+
+  /* ── SLIDE CONTENT ── */
+  .slide-body {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 30px;
+    padding: 30px 50px;
+    overflow: hidden;
+  }
+
+  /* ── FOOTER ── */
+  .slide-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: var(--navy-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    font-size: 10px;
+    color: var(--gray);
+  }
+
+  /* ── TYPOGRAPHY ── */
+  h1 { font-size: 36px; font-weight: 800; line-height: 1.2; }
+  h2 { font-size: 28px; font-weight: 700; line-height: 1.3; margin-bottom: 16px; }
+  h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .subtitle { font-size: 16px; color: var(--gray-light); font-weight: 300; }
+  .accent { color: var(--orange); }
+  .highlight { color: var(--cyan); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--navy-card);
+    border: 1px solid rgba(255,107,53,0.15);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s;
+  }
+  .card:hover { border-color: var(--orange); }
+
+  .card-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .card-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+  .card-icon { font-size: 28px; margin-bottom: 8px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 4px; }
+  .card-desc { font-size: 11px; color: var(--gray); line-height: 1.5; }
+
+  /* ── STAT CARDS ── */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 16px 0; }
+  .stat-card {
+    text-align: center;
+    background: var(--navy-card);
+    border: 1px solid rgba(255,107,53,0.15);
+    border-radius: 12px;
+    padding: 20px 12px;
+  }
+  .stat-value {
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--orange), var(--orange-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-label { font-size: 11px; color: var(--gray); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ── WORKFLOW DIAGRAM ── */
+  .workflow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 20px 0;
+    flex-wrap: nowrap;
+  }
+  .wf-step {
+    background: var(--navy-card);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+    min-width: 120px;
+    position: relative;
+  }
+  .wf-step .wf-icon { font-size: 22px; margin-bottom: 4px; }
+  .wf-step .wf-label { font-size: 10px; font-weight: 600; color: var(--white); }
+  .wf-step .wf-sub { font-size: 8px; color: var(--gray); margin-top: 2px; }
+  .wf-arrow { color: var(--orange); font-size: 20px; flex-shrink: 0; }
+
+  /* ── TABLE ── */
+  .table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .table th {
+    background: var(--navy-card);
+    color: var(--orange);
+    font-weight: 600;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--orange);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .table td {
+    padding: 8px 12px;
+    color: var(--gray-light);
+    border-bottom: 1px solid rgba(255,107,53,0.1);
+    font-size: 11px;
+  }
+  .table tr:hover td { background: rgba(255,107,53,0.05); }
+
+  /* ── ARCHITECTURE DIAGRAM ── */
+  .arch-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .arch-layer {
+    background: var(--navy-card);
+    border: 1px solid rgba(255,107,53,0.15);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .arch-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--orange);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 100px;
+  }
+  .arch-items { display: flex; gap: 8px; flex-wrap: wrap; }
+  .arch-chip {
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+    font-weight: 500;
+  }
+  .arch-chip.blue { color: var(--blue); border-color: var(--blue); background: rgba(59,130,246,0.1); }
+  .arch-chip.green { color: var(--green); border-color: var(--green); background: rgba(16,185,129,0.1); }
+  .arch-chip.purple { color: var(--purple); border-color: var(--purple); background: rgba(139,92,246,0.1); }
+  .arch-chip.orange { color: var(--orange); border-color: var(--orange); background: rgba(255,107,53,0.1); }
+  .arch-chip.cyan { color: var(--cyan); border-color: var(--cyan); background: rgba(6,182,212,0.1); }
+  .arch-chip.red { color: var(--red); border-color: var(--red); background: rgba(239,68,68,0.1); }
+
+  /* ── TWO COLUMN ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge.orange { background: rgba(255,107,53,0.15); color: var(--orange); }
+  .badge.green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .badge.blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .badge.purple { background: rgba(139,92,246,0.15); color: var(--purple); }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar { height: 6px; background: var(--navy-card); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+
+  /* ── LIST ── */
+  .feature-list { list-style: none; }
+  .feature-list li {
+    font-size: 12px;
+    color: var(--gray-light);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,107,53,0.08);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .feature-list li::before {
+    content: '▸';
+    color: var(--orange);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ── TIMELINE ── */
+  .timeline { display: flex; gap: 0; margin: 16px 0; }
+  .timeline-item {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    padding: 0 8px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--navy-card);
+  }
+  .timeline-item:first-child::before { left: 50%; }
+  .timeline-item:last-child::before { right: 50%; }
+  .timeline-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    position: relative;
+    z-index: 2;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .timeline-label { font-size: 10px; font-weight: 600; color: var(--white); }
+  .timeline-desc { font-size: 9px; color: var(--gray); margin-top: 2px; }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: white; }
+    .slide { margin: 0; box-shadow: none; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — TITLE -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">Problem Code: SIH26101 &nbsp;|&nbsp; Category: Software &nbsp;|&nbsp; Theme: Smart Education</div>
+  </div>
+  <div class="slide-body" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+    <div style="margin-bottom:20px;">
+      <span class="badge orange" style="font-size:12px; padding:6px 16px;">MoSPI &nbsp;|&nbsp; DIID</span>
+    </div>
+    <h1 style="font-size:42px; margin-bottom:12px;">
+      AI-Enabled <span class="accent">Skill Intelligence</span> Platform
+    </h1>
+    <p class="subtitle" style="font-size:18px; max-width:700px; margin-bottom:30px;">
+      Personalized Competency-Based Learning for India's Official Statistical System
+    </p>
+    <div style="display:flex; gap:20px; margin-top:10px;">
+      <div class="card" style="padding:12px 24px; text-align:center;">
+        <div class="card-title" style="font-size:12px;">Organization</div>
+        <div class="card-desc" style="font-size:13px; color:var(--orange);">MoSPI</div>
+      </div>
+      <div class="card" style="padding:12px 24px; text-align:center;">
+        <div class="card-title" style="font-size:12px;">Department</div>
+        <div class="card-desc" style="font-size:13px; color:var(--orange);">DIID</div>
+      </div>
+      <div class="card" style="padding:12px 24px; text-align:center;">
+        <div class="card-title" style="font-size:12px;">Team</div>
+        <div class="card-desc" style="font-size:13px; color:var(--orange);">[Your Team]</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 1</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — PROBLEM STATEMENT -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">01</span> &nbsp; The Problem</h2>
+    <div class="two-col" style="margin-top:10px;">
+      <div>
+        <div class="card" style="margin-bottom:12px; border-left:3px solid var(--red);">
+          <div class="card-title">India's Statistical Workforce</div>
+          <div class="card-desc">Thousands of officers across MoSPI, NSO, and State Statistical Organizations need continuous upskilling in modern statistical, technical, and digital skills.</div>
+        </div>
+        <div class="card" style="margin-bottom:12px; border-left:3px solid var(--orange);">
+          <div class="card-title">No Intelligent Assessment</div>
+          <div class="card-desc">No system exists to assess individual competencies, identify skill gaps, and recommend personalized learning paths from iGOT Karmayogi.</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--purple);">
+          <div class="card-title">Generic Training Waste</div>
+          <div class="card-desc">One-size-fits-all training means 60%+ time is wasted on content officers already know or don't need.</div>
+        </div>
+      </div>
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">4 Competency Domains</h3>
+        <div class="card-grid-2">
+          <div class="card" style="text-align:center; padding:14px;">
+            <div class="card-icon">📊</div>
+            <div class="card-title" style="font-size:12px;">Statistical</div>
+            <div class="card-desc">Survey Design, Sampling, Price Statistics, SDG Indicators, Data Quality</div>
+          </div>
+          <div class="card" style="text-align:center; padding:14px;">
+            <div class="card-icon">💻</div>
+            <div class="card-title" style="font-size:12px;">Technical</div>
+            <div class="card-desc">Python, R, SQL, AI/ML, Cloud Computing, APIs, GIS</div>
+          </div>
+          <div class="card" style="text-align:center; padding:14px;">
+            <div class="card-icon">🔐</div>
+            <div class="card-title" style="font-size:12px;">Digital Gov</div>
+            <div class="card-desc">Cybersecurity, Data Privacy, Gov Cloud, Digital Public Infrastructure</div>
+          </div>
+          <div class="card" style="text-align:center; padding:14px;">
+            <div class="card-icon">👥</div>
+            <div class="card-title" style="font-size:12px;">Managerial</div>
+            <div class="card-desc">Leadership, Communication, Project Mgmt, Ethics, Decision Making</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 2</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — OUR SOLUTION -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">02</span> &nbsp; Our Solution</h2>
+    <div class="card-grid-3" style="margin-top:12px;">
+      <div class="card" style="border-top:3px solid var(--orange);">
+        <div class="card-icon">🎯</div>
+        <div class="card-title">AI Competency Assessment</div>
+        <div class="card-desc">4-domain framework with AI-driven adaptive questioning. Auto-updates scores based on course completion.</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--blue);">
+        <div class="card-icon">🔍</div>
+        <div class="card-title">Automated Skill-Gap Analysis</div>
+        <div class="card-desc">Compares current levels vs role requirements. Prioritizes gaps by departmental needs and career goals.</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--green);">
+        <div class="card-icon">🔗</div>
+        <div class="card-title">iGOT Karmayogi Integration</div>
+        <div class="card-desc">Real-time API sync for course catalogue, auto-enrolment, progress tracking, and competency updates.</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--purple);">
+        <div class="card-icon">🧠</div>
+        <div class="card-title">Personalized Recommendations</div>
+        <div class="card-desc">ML + NLP + semantic search. Considers level, history, department, career path. Dynamic re-ranking.</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--cyan);">
+        <div class="card-icon">📝</div>
+        <div class="card-title">AI Assessment Engine</div>
+        <div class="card-desc">LLM-powered MCQ/quiz generation from uploaded docs, PPTs, videos. Instant evaluation + explanations.</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--red);">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Interactive Dashboards</div>
+        <div class="card-desc">Learner: competency radar, skill gaps, progress. Admin: org-wide insights, predictive analytics.</div>
+      </div>
+    </div>
+    <div style="margin-top:14px; text-align:center;">
+      <span class="badge orange" style="font-size:11px; padding:6px 16px;">Secure &nbsp;•&nbsp; Scalable &nbsp;•&nbsp; Cloud-Ready &nbsp;•&nbsp; Interoperable &nbsp;•&nbsp; SSO + RBAC</span>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 3</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — WORKFLOW DIAGRAM -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">03</span> &nbsp; End-to-End Workflow</h2>
+    <div class="workflow" style="margin-top:16px;">
+      <div class="wf-step">
+        <div class="wf-icon">👤</div>
+        <div class="wf-label">Officer Login</div>
+        <div class="wf-sub">SSO / RBAC</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">📋</div>
+        <div class="wf-label">Assessment</div>
+        <div class="wf-sub">AI Adaptive Quiz</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">🎯</div>
+        <div class="wf-label">Competency Map</div>
+        <div class="wf-sub">4 Domains × N Skills</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">🔍</div>
+        <div class="wf-label">Skill Gap</div>
+        <div class="wf-sub">Auto Detection</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">🧠</div>
+        <div class="wf-label">AI Recommender</div>
+        <div class="wf-sub">ML + NLP + LLM</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">📚</div>
+        <div class="wf-label">iGOT Courses</div>
+        <div class="wf-sub">API Integration</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">📊</div>
+        <div class="wf-label">Progress</div>
+        <div class="wf-sub">Track & Update</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <h3 style="color:var(--orange); margin-bottom:12px;">Data Flow</h3>
+      <div class="arch-diagram">
+        <div class="arch-layer">
+          <div class="arch-label">Input</div>
+          <div class="arch-items">
+            <span class="arch-chip blue">Profile Data</span>
+            <span class="arch-chip blue">Assessment Responses</span>
+            <span class="arch-chip blue">Course History</span>
+            <span class="arch-chip blue">Department Priority</span>
+          </div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-label">AI Engine</div>
+          <div class="arch-items">
+            <span class="arch-chip purple">Competency Classifier</span>
+            <span class="arch-chip purple">Skill Gap Analyzer</span>
+            <span class="arch-chip purple">Semantic Search</span>
+            <span class="arch-chip purple">Question Generator</span>
+          </div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-label">Integration</div>
+          <div class="arch-items">
+            <span class="arch-chip green">iGOT Karmayogi API</span>
+            <span class="arch-chip green">NSSTA TPAC API</span>
+            <span class="arch-chip green">Course Catalogue</span>
+            <span class="arch-chip green">Enrolment + Progress</span>
+          </div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-label">Output</div>
+          <div class="arch-items">
+            <span class="arch-chip orange">Personalized Path</span>
+            <span class="arch-chip orange">MCQs & Quizzes</span>
+            <span class="arch-chip orange">Dashboards</span>
+            <span class="arch-chip orange">Competency Scores</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 4</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — TECH STACK -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">04</span> &nbsp; Technology Stack</h2>
+    <div class="two-col" style="margin-top:12px;">
+      <div>
+        <table class="table">
+          <tr><th>Layer</th><th>Technology</th></tr>
+          <tr><td style="color:var(--orange);">Frontend</td><td>React.js, Next.js, Material UI, D3.js</td></tr>
+          <tr><td style="color:var(--orange);">Backend</td><td>Python (FastAPI) + Node.js</td></tr>
+          <tr><td style="color:var(--orange);">AI/ML</td><td>Hugging Face, spaCy, scikit-learn, OpenAI API</td></tr>
+          <tr><td style="color:var(--orange);">NLP</td><td>spaCy, NLTK, Sentence-BERT, GPT-4</td></tr>
+          <tr><td style="color:var(--orange);">Database</td><td>PostgreSQL + Redis + pgvector</td></tr>
+          <tr><td style="color:var(--orange);">Search</td><td>Elasticsearch + Semantic Vector Search</td></tr>
+          <tr><td style="color:var(--orange);">Cloud</td><td>AWS / Azure / NIC Cloud</td></tr>
+          <tr><td style="color:var(--orange);">Auth</td><td>Keycloak (SSO) + JWT + RBAC</td></tr>
+          <tr><td style="color:var(--orange);">CI/CD</td><td>GitHub Actions + Docker + Kubernetes</td></tr>
+          <tr><td style="color:var(--orange);">Monitoring</td><td>Prometheus + Grafana</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">Architecture Layers</h3>
+        <div class="arch-diagram">
+          <div class="arch-layer" style="border-left:3px solid var(--blue);">
+            <div class="arch-label" style="min-width:80px;">UI</div>
+            <div class="arch-items">
+              <span class="arch-chip blue">React</span>
+              <span class="arch-chip blue">D3.js</span>
+              <span class="arch-chip blue">Material UI</span>
+            </div>
+          </div>
+          <div class="arch-layer" style="border-left:3px solid var(--green);">
+            <div class="arch-label" style="min-width:80px;">API</div>
+            <div class="arch-items">
+              <span class="arch-chip green">FastAPI</span>
+              <span class="arch-chip green">GraphQL</span>
+              <span class="arch-chip green">REST</span>
+            </div>
+          </div>
+          <div class="arch-layer" style="border-left:3px solid var(--purple);">
+            <div class="arch-label" style="min-width:80px;">AI/ML</div>
+            <div class="arch-items">
+              <span class="arch-chip purple">LLM</span>
+              <span class="arch-chip purple">NLP</span>
+              <span class="arch-chip purple">BERT</span>
+              <span class="arch-chip purple">IRT</span>
+            </div>
+          </div>
+          <div class="arch-layer" style="border-left:3px solid var(--cyan);">
+            <div class="arch-label" style="min-width:80px;">Data</div>
+            <div class="arch-items">
+              <span class="arch-chip cyan">PostgreSQL</span>
+              <span class="arch-chip cyan">Redis</span>
+              <span class="arch-chip cyan">pgvector</span>
+            </div>
+          </div>
+          <div class="arch-layer" style="border-left:3px solid var(--red);">
+            <div class="arch-label" style="min-width:80px;">Infra</div>
+            <div class="arch-items">
+              <span class="arch-chip red">Docker</span>
+              <span class="arch-chip red">K8s</span>
+              <span class="arch-chip red">NIC Cloud</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 5</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — AI/ML PIPELINE -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">05</span> &nbsp; AI/ML Pipeline</h2>
+    <div class="card-grid-2" style="margin-top:12px;">
+      <div class="card" style="border-left:3px solid var(--orange);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span style="font-size:24px;">🎯</span>
+          <div class="card-title">Competency Mapping Engine</div>
+        </div>
+        <div class="card-desc">
+          <strong>Input:</strong> User profile + assessment responses + course history<br>
+          <strong>Model:</strong> Multi-label classifier (4 domains × N skills)<br>
+          <strong>Output:</strong> Competency vector [statistical: 0.7, technical: 0.4, ...]<br>
+          <strong>Training:</strong> Labeled competency data from NSSTA
+        </div>
+      </div>
+      <div class="card" style="border-left:3px solid var(--blue);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span style="font-size:24px;">🔍</span>
+          <div class="card-title">Semantic Search Engine</div>
+        </div>
+        <div class="card-desc">
+          <strong>Embeddings:</strong> Sentence-BERT / OpenAI Embeddings<br>
+          <strong>Vector DB:</strong> pgvector / Pinecone<br>
+          <strong>Query:</strong> "Learn Python for data analysis" → ranked courses<br>
+          <strong>Features:</strong> Synonym matching, context-aware ranking
+        </div>
+      </div>
+      <div class="card" style="border-left:3px solid var(--purple);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span style="font-size:24px;">📝</span>
+          <div class="card-title">Question Generation (LLM)</div>
+        </div>
+        <div class="card-desc">
+          <strong>Input:</strong> Uploaded document / video transcript<br>
+          <strong>Model:</strong> Fine-tuned LLM or GPT-4 API<br>
+          <strong>Output:</strong> MCQs + quizzes with explanations<br>
+          <strong>Features:</strong> Difficulty levels, topic tagging, instant evaluation
+        </div>
+      </div>
+      <div class="card" style="border-left:3px solid var(--green);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span style="font-size:24px;">📈</span>
+          <div class="card-title">Adaptive Assessment</div>
+        </div>
+        <div class="card-desc">
+          <strong>Algorithm:</strong> Item Response Theory (IRT)<br>
+          <strong>Model:</strong> Bayesian Knowledge Tracing<br>
+          <strong>Behavior:</strong> Adjusts difficulty based on responses<br>
+          <strong>Output:</strong> Precise skill level estimation + confidence
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 6</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — iGOT INTEGRATION -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">06</span> &nbsp; iGOT Karmayogi Integration</h2>
+    <div class="two-col" style="margin-top:12px;">
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">API Integration Points</h3>
+        <table class="table">
+          <tr><th>Endpoint</th><th>Purpose</th><th>Frequency</th></tr>
+          <tr><td>/api/courses</td><td>Retrieve course catalogue</td><td>On-demand</td></tr>
+          <tr><td>/api/enrol</td><td>Auto-enrol user</td><td>On recommendation</td></tr>
+          <tr><td>/api/progress</td><td>Track completion</td><td>Real-time</td></tr>
+          <tr><td>/api/competency</td><td>Update scores</td><td>On completion</td></tr>
+          <tr><td>/api/nssta</td><td>Sync TPAC programmes</td><td>Daily</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">Integration Flow</h3>
+        <div class="workflow" style="flex-direction:column; gap:8px; align-items:stretch;">
+          <div class="wf-step" style="display:flex; align-items:center; gap:12px; text-align:left;">
+            <div class="wf-icon">1</div>
+            <div><div class="wf-label">Skill Gap Identified</div><div class="wf-sub">AI engine detects "Python: Intermediate gap"</div></div>
+          </div>
+          <div class="wf-step" style="display:flex; align-items:center; gap:12px; text-align:left;">
+            <div class="wf-icon">2</div>
+            <div><div class="wf-label">Course Matched via iGOT API</div><div class="wf-sub">"Python for Data Analysis — 8 modules"</div></div>
+          </div>
+          <div class="wf-step" style="display:flex; align-items:center; gap:12px; text-align:left;">
+            <div class="wf-icon">3</div>
+            <div><div class="wf-label">Auto-Enrolled</div><div class="wf-sub">User enrolled, LMS access granted</div></div>
+          </div>
+          <div class="wf-step" style="display:flex; align-items:center; gap:12px; text-align:left;">
+            <div class="wf-icon">4</div>
+            <div><div class="wf-label">Progress Tracked</div><div class="wf-sub">Module completion → competency score updated</div></div>
+          </div>
+          <div class="wf-step" style="display:flex; align-items:center; gap:12px; text-align:left;">
+            <div class="wf-icon">5</div>
+            <div><div class="wf-label">New Recommendation</div><div class="wf-sub">Next skill gap targeted, new course suggested</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 7</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — DASHBOARD DESIGN -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">07</span> &nbsp; Dashboard Design</h2>
+    <div class="two-col" style="margin-top:12px;">
+      <div>
+        <h3 style="color:var(--cyan); margin-bottom:12px;">📊 Learner Dashboard</h3>
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-title">Competency Radar Chart</div>
+          <div class="card-desc">4-domain radar: Statistical (72%), Technical (45%), Digital Gov (38%), Managerial (65%)</div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <div style="flex:1;"><div class="progress-bar"><div class="progress-fill" style="width:72%;background:var(--green);"></div></div><div style="font-size:9px;color:var(--gray);margin-top:2px;">Statistical 72%</div></div>
+            <div style="flex:1;"><div class="progress-bar"><div class="progress-fill" style="width:45%;background:var(--orange);"></div></div><div style="font-size:9px;color:var(--gray);margin-top:2px;">Technical 45%</div></div>
+            <div style="flex:1;"><div class="progress-bar"><div class="progress-fill" style="width:38%;background:var(--red);"></div></div><div style="font-size:9px;color:var(--gray);margin-top:2px;">Digital Gov 38%</div></div>
+            <div style="flex:1;"><div class="progress-bar"><div class="progress-fill" style="width:65%;background:var(--blue);"></div></div><div style="font-size:9px;color:var(--gray);margin-top:2px;">Managerial 65%</div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-title">Skill Gap Heat Map</div>
+          <div class="card-desc">Red = critical gap, Orange = moderate, Green = proficient</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Learning Path Pipeline</div>
+          <div class="card-desc">Visual pipeline: Current → Recommended → In Progress → Completed</div>
+        </div>
+      </div>
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">🏢 Administrator Dashboard</h3>
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-title">Organization-Wide Insights</div>
+          <div class="card-desc">Competency distribution across departments, training completion rates, readiness scores</div>
+        </div>
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-title">Predictive Analytics</div>
+          <div class="card-desc">"65% of officers need Cloud Computing training by 2026" — AI-powered forecasting</div>
+        </div>
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-title">Training Effectiveness</div>
+          <div class="card-desc">Before/after competency comparison, ROI per training programme</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Export Reports</div>
+          <div class="card-desc">PDF/Excel reports for ministry review, policy decisions, budget allocation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 8</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 9 — SECURITY & COMPLIANCE -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">08</span> &nbsp; Security & Compliance</h2>
+    <div class="two-col" style="margin-top:12px;">
+      <div>
+        <table class="table">
+          <tr><th>Requirement</th><th>Implementation</th></tr>
+          <tr><td style="color:var(--orange);">RBAC</td><td>Admin, Manager, Learner, Trainer roles</td></tr>
+          <tr><td style="color:var(--orange);">SSO</td><td>SAML 2.0 / OAuth 2.0 (Keycloak)</td></tr>
+          <tr><td style="color:var(--orange);">Encryption</td><td>AES-256 at rest, TLS 1.3 in transit</td></tr>
+          <tr><td style="color:var(--orange);">Government Cloud</td><td>NIC / MeitY empaneled cloud</td></tr>
+          <tr><td style="color:var(--orange);">Secure APIs</td><td>JWT tokens, rate limiting, validation</td></tr>
+          <tr><td style="color:var(--orange);">Compliance</td><td>IT Act 2000, DPDP Act 2023</td></tr>
+          <tr><td style="color:var(--orange);">Audit Logging</td><td>All access logged with timestamps</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">Security Principles</h3>
+        <div class="card" style="margin-bottom:10px; border-left:3px solid var(--red);">
+          <div class="card-title">🔒 Least Privilege</div>
+          <div class="card-desc">Users only access what their role requires</div>
+        </div>
+        <div class="card" style="margin-bottom:10px; border-left:3px solid var(--orange);">
+          <div class="card-title">🛡️ Data Minimization</div>
+          <div class="card-desc">Collect only what's necessary, delete when no longer needed</div>
+        </div>
+        <div class="card" style="margin-bottom:10px; border-left:3px solid var(--purple);">
+          <div class="card-title">🔑 API Key Protection</div>
+          <div class="card-desc">Keys in environment variables, never in source code</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--green);">
+          <div class="card-title">📝 Audit Trail</div>
+          <div class="card-desc">Every action tracked, timestamped, and reviewable</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 9</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 10 — COMPETENCY FRAMEWORK -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">09</span> &nbsp; Competency Framework</h2>
+    <div class="card-grid-4" style="margin-top:12px;">
+      <div class="card" style="border-top:3px solid var(--orange);">
+        <div class="card-title" style="text-align:center;">📊 Statistical</div>
+        <div class="progress-bar" style="margin:8px 0;"><div class="progress-fill" style="width:100%;background:var(--orange);"></div></div>
+        <ul class="feature-list">
+          <li>Survey Design</li>
+          <li>Sampling Methods</li>
+          <li>National Accounts</li>
+          <li>Price Statistics</li>
+          <li>Labour Statistics</li>
+          <li>Agricultural Stats</li>
+          <li>Industrial Stats</li>
+          <li>SDG Indicators</li>
+          <li>Metadata Standards</li>
+          <li>Data Quality Frameworks</li>
+        </ul>
+      </div>
+      <div class="card" style="border-top:3px solid var(--blue);">
+        <div class="card-title" style="text-align:center;">💻 Technical</div>
+        <div class="progress-bar" style="margin:8px 0;"><div class="progress-fill" style="width:100%;background:var(--blue);"></div></div>
+        <ul class="feature-list">
+          <li>Python</li>
+          <li>R Programming</li>
+          <li>SQL</li>
+          <li>Stata / SPSS / SAS</li>
+          <li>GIS</li>
+          <li>Data Visualization</li>
+          <li>AI / ML</li>
+          <li>Cloud Computing</li>
+          <li>APIs</li>
+          <li>Open Data</li>
+        </ul>
+      </div>
+      <div class="card" style="border-top:3px solid var(--purple);">
+        <div class="card-title" style="text-align:center;">🔐 Digital Gov</div>
+        <div class="progress-bar" style="margin:8px 0;"><div class="progress-fill" style="width:100%;background:var(--purple);"></div></div>
+        <ul class="feature-list">
+          <li>Cybersecurity</li>
+          <li>Data Privacy</li>
+          <li>Digital Signatures</li>
+          <li>Government Cloud</li>
+          <li>Digital Public Infra</li>
+          <li>Data Governance</li>
+          <li>Compliance</li>
+          <li>Risk Management</li>
+        </ul>
+      </div>
+      <div class="card" style="border-top:3px solid var(--green);">
+        <div class="card-title" style="text-align:center;">👥 Managerial</div>
+        <div class="progress-bar" style="margin:8px 0;"><div class="progress-fill" style="width:100%;background:var(--green);"></div></div>
+        <ul class="feature-list">
+          <li>Leadership</li>
+          <li>Communication</li>
+          <li>Project Management</li>
+          <li>Ethics</li>
+          <li>Decision Making</li>
+          <li>Change Management</li>
+          <li>Team Building</li>
+          <li>Strategic Planning</li>
+        </ul>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:12px;">
+      <span class="badge orange">Each skill rated: Beginner → Intermediate → Advanced → Expert</span>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 10</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 11 — EXPECTED OUTCOMES -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">10</span> &nbsp; Expected Outcomes</h2>
+    <div class="stat-row" style="margin-top:16px;">
+      <div class="stat-card">
+        <div class="stat-value">85%+</div>
+        <div class="stat-label">Training Relevance</div>
+        <div style="font-size:10px;color:var(--gray);margin-top:4px;">Up from ~40%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">70%+</div>
+        <div class="stat-label">Course Completion</div>
+        <div style="font-size:10px;color:var(--gray);margin-top:4px;">Up from ~30%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">100%</div>
+        <div class="stat-label">Competency Visibility</div>
+        <div style="font-size:10px;color:var(--gray);margin-top:4px;">From manual → real-time AI</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">3 min</div>
+        <div class="stat-label">Assessment Generation</div>
+        <div style="font-size:10px;color:var(--gray);margin-top:4px;">Down from 2-3 days</div>
+      </div>
+    </div>
+    <div class="two-col" style="margin-top:20px;">
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">Impact on Officers</h3>
+        <ul class="feature-list">
+          <li>Know exactly what skills they need to develop</li>
+          <li>Get personalized courses matched to their role</li>
+          <li>Track progress with visual dashboards</li>
+          <li>Take AI-generated assessments for self-evaluation</li>
+          <li>Receive multilingual learning resources</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="color:var(--orange); margin-bottom:12px;">Impact on Organization</h3>
+        <ul class="feature-list">
+          <li>Real-time workforce competency visibility</li>
+          <li>Data-driven training budget allocation</li>
+          <li>Predictive analytics for future skill needs</li>
+          <li>Automated compliance and audit trails</li>
+          <li>Measurable ROI on training investments</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 11</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 12 — DEVELOPMENT ROADMAP -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body">
+    <h2><span class="accent">11</span> &nbsp; Development Roadmap</h2>
+    <div class="timeline" style="margin-top:20px;">
+      <div class="timeline-item">
+        <div class="timeline-dot">1</div>
+        <div class="timeline-label">Foundation</div>
+        <div class="timeline-desc">Week 1-2</div>
+        <div class="timeline-desc">Setup, DB, Auth, UI</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">2</div>
+        <div class="timeline-label">iGOT Integration</div>
+        <div class="timeline-desc">Week 3-4</div>
+        <div class="timeline-desc">API, Courses, Sync</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">3</div>
+        <div class="timeline-label">AI Engine</div>
+        <div class="timeline-desc">Week 5-7</div>
+        <div class="timeline-desc">ML, NLP, LLM</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">4</div>
+        <div class="timeline-label">Dashboards</div>
+        <div class="timeline-desc">Week 8-9</div>
+        <div class="timeline-desc">Learner + Admin</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">5</div>
+        <div class="timeline-label">Testing</div>
+        <div class="timeline-desc">Week 10</div>
+        <div class="timeline-desc">Security, Perf, UAT</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">6</div>
+        <div class="timeline-label">Deploy</div>
+        <div class="timeline-desc">Week 11-12</div>
+        <div class="timeline-desc">Cloud, Docs, Handover</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;">
+      <h3 style="color:var(--orange); margin-bottom:12px;">Phase Details</h3>
+      <div class="card-grid-3">
+        <div class="card">
+          <div class="card-title" style="font-size:11px;">Phase 1-2: Foundation</div>
+          <div class="card-desc">Project setup, PostgreSQL schema, Keycloak SSO, React UI, Basic API endpoints</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="font-size:11px;">Phase 3: AI Engine</div>
+          <div class="card-desc">Competency classifier, semantic search, LLM question gen, adaptive assessment</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="font-size:11px;">Phase 4-6: Polish</div>
+          <div class="card-desc">Dashboards, D3.js charts, security audit, performance tuning, cloud deploy</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 12</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 13 — TEAM -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body" style="display:flex; flex-direction:column; justify-content:center;">
+    <h2 style="text-align:center;"><span class="accent">12</span> &nbsp; Our Team</h2>
+    <div class="card-grid-4" style="margin-top:24px; max-width:1000px; margin-left:auto; margin-right:auto;">
+      <div class="card" style="text-align:center; padding:24px 16px;">
+        <div style="font-size:40px; margin-bottom:8px;">👨‍💻</div>
+        <div class="card-title">[Name 1]</div>
+        <div class="card-desc" style="color:var(--orange);">Team Lead / AI-ML</div>
+        <div class="card-desc" style="margin-top:4px;">Machine Learning, NLP, Python</div>
+      </div>
+      <div class="card" style="text-align:center; padding:24px 16px;">
+        <div style="font-size:40px; margin-bottom:8px;">👩‍💻</div>
+        <div class="card-title">[Name 2]</div>
+        <div class="card-desc" style="color:var(--blue);">Backend Developer</div>
+        <div class="card-desc" style="margin-top:4px;">Python, FastAPI, PostgreSQL</div>
+      </div>
+      <div class="card" style="text-align:center; padding:24px 16px;">
+        <div style="font-size:40px; margin-bottom:8px;">👨‍🎨</div>
+        <div class="card-title">[Name 3]</div>
+        <div class="card-desc" style="color:var(--green);">Frontend Developer</div>
+        <div class="card-desc" style="margin-top:4px;">React.js, UI/UX, D3.js</div>
+      </div>
+      <div class="card" style="text-align:center; padding:24px 16px;">
+        <div style="font-size:40px; margin-bottom:8px;">👩‍🔬</div>
+        <div class="card-title">[Name 4]</div>
+        <div class="card-desc" style="color:var(--purple);">Data Engineer</div>
+        <div class="card-desc" style="margin-top:4px;">Data Pipelines, APIs, Search</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:30px;">
+      <div class="card" style="display:inline-block; padding:16px 40px;">
+        <div class="card-title" style="font-size:14px;">Organization: <span class="accent">MoSPI</span></div>
+        <div class="card-desc" style="font-size:13px;">Department: Data Informatics & Innovation Division (DIID)</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 13</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 14 — THANK YOU -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="sih-bar">
+    <div class="sih-logo">SMART INDIA HACKATHON 2025</div>
+    <div class="sih-info">SIH26101 — Skill Intelligence Platform</div>
+  </div>
+  <div class="slide-body" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+    <div style="font-size:60px; margin-bottom:20px;">🙏</div>
+    <h1 style="font-size:44px; margin-bottom:12px;">Thank You</h1>
+    <p class="subtitle" style="font-size:20px; margin-bottom:30px;">
+      AI-Enabled Skill Intelligence Platform
+    </p>
+    <p style="font-size:14px; color:var(--gray); margin-bottom:8px;">
+      Building India's Future-Ready Statistical Workforce
+    </p>
+    <div style="margin-top:30px;">
+      <span class="badge orange" style="font-size:14px; padding:10px 30px;">Questions?</span>
+    </div>
+    <div style="margin-top:40px; display:flex; gap:16px;">
+      <div class="card" style="padding:12px 24px;">
+        <div class="card-desc" style="font-size:11px; color:var(--gray);">Problem Code</div>
+        <div class="card-title" style="color:var(--orange);">SIH26101</div>
+      </div>
+      <div class="card" style="padding:12px 24px;">
+        <div class="card-desc" style="font-size:11px; color:var(--gray);">Organization</div>
+        <div class="card-title" style="color:var(--orange);">MoSPI</div>
+      </div>
+      <div class="card" style="padding:12px 24px;">
+        <div class="card-desc" style="font-size:11px; color:var(--gray);">Theme</div>
+        <div class="card-title" style="color:var(--orange);">Smart Education</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>SIH 2025 — Smart Education</span>
+    <span>Slide 14</span>
+  </div>
+</div>
+
+</body>
+</html>

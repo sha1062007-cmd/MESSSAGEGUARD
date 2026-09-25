@@ -1,0 +1,7 @@
+numpy
+joblib
+lightgbm
+scikit-learn
+pefile
+signify==0.7.1
+thrember

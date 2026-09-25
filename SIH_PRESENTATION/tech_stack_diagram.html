@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tech Stack Diagram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #0a1628;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    padding: 40px;
+  }
+  .container {
+    width: 1200px;
+    background: linear-gradient(135deg, #0a1628 0%, #122240 100%);
+    border: 2px solid rgba(255,107,53,0.2);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .title span { color: #FF6B35; }
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #94A3B8;
+    margin-bottom: 36px;
+  }
+
+  /* ── ARCHITECTURE LAYERS ── */
+  .arch-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+  .arch-layer {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .layer-label {
+    width: 130px;
+    background: #162a4a;
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .layer-label .icon { font-size: 22px; margin-bottom: 4px; }
+  .layer-label .name { font-size: 11px; font-weight: 700; }
+  .layer-items {
+    flex: 1;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .tech-chip {
+    background: #162a4a;
+    border: 1px solid;
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+  }
+  .tech-chip .tech-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .tech-chip .tech-desc {
+    font-size: 9px;
+    margin-top: 2px;
+    opacity: 0.7;
+  }
+
+  /* ── COLORS ── */
+  .blue { border-color: #3B82F6; background: rgba(59,130,246,0.08); }
+  .blue .tech-name { color: #60A5FA; }
+  .blue .tech-desc { color: #93C5FD; }
+  .layer-label.blue { border-color: rgba(59,130,246,0.3); }
+  .layer-label.blue .name { color: #60A5FA; }
+
+  .green { border-color: #10B981; background: rgba(16,185,129,0.08); }
+  .green .tech-name { color: #34D399; }
+  .green .tech-desc { color: #6EE7B7; }
+  .layer-label.green { border-color: rgba(16,185,129,0.3); }
+  .layer-label.green .name { color: #34D399; }
+
+  .purple { border-color: #8B5CF6; background: rgba(139,92,246,0.08); }
+  .purple .tech-name { color: #A78BFA; }
+  .purple .tech-desc { color: #C4B5FD; }
+  .layer-label.purple { border-color: rgba(139,92,246,0.3); }
+  .layer-label.purple .name { color: #A78BFA; }
+
+  .cyan { border-color: #06B6D4; background: rgba(6,182,212,0.08); }
+  .cyan .tech-name { color: #22D3EE; }
+  .cyan .tech-desc { color: #67E8F9; }
+  .layer-label.cyan { border-color: rgba(6,182,212,0.3); }
+  .layer-label.cyan .name { color: #22D3EE; }
+
+  .orange { border-color: #FF6B35; background: rgba(255,107,53,0.08); }
+  .orange .tech-name { color: #FF8F5E; }
+  .orange .tech-desc { color: #FFB088; }
+  .layer-label.orange { border-color: rgba(255,107,53,0.3); }
+  .layer-label.orange .name { color: #FF8F5E; }
+
+  .red { border-color: #EF4444; background: rgba(239,68,68,0.08); }
+  .red .tech-name { color: #F87171; }
+  .red .tech-desc { color: #FCA5A5; }
+  .layer-label.red { border-color: rgba(239,68,68,0.3); }
+  .layer-label.red .name { color: #F87171; }
+
+  /* ── TABLE ── */
+  .tech-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .tech-table th {
+    background: #162a4a;
+    color: #FF6B35;
+    font-weight: 600;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid #FF6B35;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tech-table td {
+    padding: 8px 14px;
+    color: #CBD5E1;
+    border-bottom: 1px solid rgba(255,107,53,0.1);
+    font-size: 11px;
+  }
+  .tech-table td:first-child {
+    color: #FF8F5E;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title"><span>Technology</span> Stack & Architecture</div>
+  <div class="subtitle">Full-Stack AI Platform — MoSPI Skill Intelligence System</div>
+
+  <div class="arch-stack">
+    <!-- UI Layer -->
+    <div class="arch-layer">
+      <div class="layer-label blue">
+        <div class="icon">🖥️</div>
+        <div class="name">Presentation</div>
+      </div>
+      <div class="layer-items">
+        <div class="tech-chip blue">
+          <div class="tech-name">React.js</div>
+          <div class="tech-desc">SPA Framework</div>
+        </div>
+        <div class="tech-chip blue">
+          <div class="tech-name">Next.js</div>
+          <div class="tech-desc">SSR / Routing</div>
+        </div>
+        <div class="tech-chip blue">
+          <div class="tech-name">Material UI</div>
+          <div class="tech-desc">Component Library</div>
+        </div>
+        <div class="tech-chip blue">
+          <div class="tech-name">D3.js</div>
+          <div class="tech-desc">Data Visualization</div>
+        </div>
+        <div class="tech-chip blue">
+          <div class="tech-name">Chart.js</div>
+          <div class="tech-desc">Dashboard Charts</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Layer -->
+    <div class="arch-layer">
+      <div class="layer-label green">
+        <div class="icon">⚡</div>
+        <div class="name">Backend API</div>
+      </div>
+      <div class="layer-items">
+        <div class="tech-chip green">
+          <div class="tech-name">Python FastAPI</div>
+          <div class="tech-desc">REST API Server</div>
+        </div>
+        <div class="tech-chip green">
+          <div class="tech-name">Node.js</div>
+          <div class="tech-desc">WebSocket / Real-time</div>
+        </div>
+        <div class="tech-chip green">
+          <div class="tech-name">GraphQL</div>
+          <div class="tech-desc">Query Flexibility</div>
+        </div>
+        <div class="tech-chip green">
+          <div class="tech-name">Celery</div>
+          <div class="tech-desc">Async Tasks</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI/ML Layer -->
+    <div class="arch-layer">
+      <div class="layer-label purple">
+        <div class="icon">🧠</div>
+        <div class="name">AI / ML Engine</div>
+      </div>
+      <div class="layer-items">
+        <div class="tech-chip purple">
+          <div class="tech-name">Hugging Face</div>
+          <div class="tech-desc">Transformers / BERT</div>
+        </div>
+        <div class="tech-chip purple">
+          <div class="tech-name">spaCy / NLTK</div>
+          <div class="tech-desc">NLP Processing</div>
+        </div>
+        <div class="tech-chip purple">
+          <div class="tech-name">scikit-learn</div>
+          <div class="tech-desc">ML Classifiers</div>
+        </div>
+        <div class="tech-chip purple">
+          <div class="tech-name">OpenAI API</div>
+          <div class="tech-desc">GPT-4 / LLM</div>
+        </div>
+        <div class="tech-chip purple">
+          <div class="tech-name">PyTorch</div>
+          <div class="tech-desc">Deep Learning</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Layer -->
+    <div class="arch-layer">
+      <div class="layer-label cyan">
+        <div class="icon">💾</div>
+        <div class="name">Data & Search</div>
+      </div>
+      <div class="layer-items">
+        <div class="tech-chip cyan">
+          <div class="tech-name">PostgreSQL</div>
+          <div class="tech-desc">Primary Database</div>
+        </div>
+        <div class="tech-chip cyan">
+          <div class="tech-name">pgvector</div>
+          <div class="tech-desc">Vector Similarity</div>
+        </div>
+        <div class="tech-chip cyan">
+          <div class="tech-name">Redis</div>
+          <div class="tech-desc">Cache / Sessions</div>
+        </div>
+        <div class="tech-chip cyan">
+          <div class="tech-name">Elasticsearch</div>
+          <div class="tech-desc">Full-text Search</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Infra Layer -->
+    <div class="arch-layer">
+      <div class="layer-label orange">
+        <div class="icon">☁️</div>
+        <div class="name">Infrastructure</div>
+      </div>
+      <div class="layer-items">
+        <div class="tech-chip orange">
+          <div class="tech-name">NIC Cloud</div>
+          <div class="tech-desc">Gov Cloud Hosting</div>
+        </div>
+        <div class="tech-chip orange">
+          <div class="tech-name">Docker</div>
+          <div class="tech-desc">Containerization</div>
+        </div>
+        <div class="tech-chip orange">
+          <div class="tech-name">Kubernetes</div>
+          <div class="tech-desc">Orchestration</div>
+        </div>
+        <div class="tech-chip orange">
+          <div class="tech-name">GitHub Actions</div>
+          <div class="tech-desc">CI/CD Pipeline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Layer -->
+    <div class="arch-layer">
+      <div class="layer-label red">
+        <div class="icon">🔐</div>
+        <div class="name">Security</div>
+      </div>
+      <div class="layer-items">
+        <div class="tech-chip red">
+          <div class="tech-name">Keycloak</div>
+          <div class="tech-desc">SSO / IAM</div>
+        </div>
+        <div class="tech-chip red">
+          <div class="tech-name">JWT + OAuth 2.0</div>
+          <div class="tech-desc">Token Auth</div>
+        </div>
+        <div class="tech-chip red">
+          <div class="tech-name">RBAC</div>
+          <div class="tech-desc">Role-Based Access</div>
+        </div>
+        <div class="tech-chip red">
+          <div class="tech-name">AES-256 + TLS</div>
+          <div class="tech-desc">Encryption</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech Table -->
+  <table class="tech-table">
+    <tr><th>Layer</th><th>Technology</th><th>Purpose</th><th>Why Chosen</th></tr>
+    <tr><td>Frontend</td><td>React + Next.js</td><td>Dashboard UI</td><td>Fast rendering, ecosystem, SEO</td></tr>
+    <tr><td>Backend</td><td>Python FastAPI</td><td>API + ML Pipeline</td><td>Async, ML ecosystem, speed</td></tr>
+    <tr><td>AI/ML</td><td>Hugging Face + GPT-4</td><td>NLP + Competency + LLM</td><td>State-of-art models, flexibility</td></tr>
+    <tr><td>Database</td><td>PostgreSQL + pgvector</td><td>Structured + Vector data</td><td>ACID, semantic search, gov standard</td></tr>
+    <tr><td>Search</td><td>Elasticsearch</td><td>Course search</td><td>Full-text + faceted search</td></tr>
+    <tr><td>Cloud</td><td>NIC / MeitY Cloud</td><td>Deployment</td><td>Gov compliance, data sovereignty</td></tr>
+    <tr><td>Auth</td><td>Keycloak</td><td>SSO + RBAC</td><td>Gov standard, SAML 2.0</td></tr>
+  </table>
+</div>
+</body>
+</html>

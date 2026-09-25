@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Foreground Cyan Shield with Inner Cutout Checkmark -->
+    <!-- Scaled and centered within the 66dp safe zone (108dp viewport) -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,24 L28,34 V56 C28,73 40,86 54,90 C68,86 80,73 80,56 V34 L54,24 Z" />
+
+    <!-- Inner Checkmark Cutout -->
+    <path
+        android:fillColor="#0A0E14"
+        android:pathData="M48.5,63.5 L40.5,55.5 L37.5,58.5 L48.5,69.5 L70.5,47.5 L67.5,44.5 L48.5,63.5 Z" />
+
+</vector>

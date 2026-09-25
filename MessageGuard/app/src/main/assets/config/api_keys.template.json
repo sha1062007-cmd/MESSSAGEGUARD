@@ -1,0 +1,14 @@
+{
+  "comment": "Threat Vision API Configuration Template. Populate keys to enable reserved features.",
+  "gmail_api": {
+    "client_id": "",
+    "client_secret": "",
+    "redirect_uri": "http://localhost",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly"
+    ]
+  },
+  "gemini_api": {
+    "default_key": ""
+  }
+}

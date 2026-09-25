@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_loading_title">ANALYZING MESSAGE…</string>
+    <string name="scan_loading_score">Running OCR &amp; Edge ML…</string>
+    <string name="scan_loading_status">Status: Scanning</string>
+    <string name="scan_loading_summary">Analyzing the selected screen area for text, links, and scam signals…</string>
+    <string name="scan_loading_recommendations">• Extracting text and links…\n• Evaluating UPI and phishing signals…</string>
+
+    <string name="result_verdict_format">VERDICT: %1$s</string>
+    <string name="result_verdict_safe">SAFE</string>
+    <string name="result_verdict_warning">WARNING</string>
+    <string name="result_verdict_danger">DANGER</string>
+    <string name="result_verdict_incomplete">SCAN INCOMPLETE</string>
+    <string name="result_risk_score_format">Risk Score: %1$d%%</string>
+    <string name="result_category_format">Category: %1$s</string>
+    <string name="result_category_safe">SAFE</string>
+    <string name="result_category_phishing">PHISHING</string>
+    <string name="result_category_scam">SCAM</string>
+    <string name="result_category_otp_fraud">OTP FRAUD</string>
+    <string name="result_category_fake_job">FAKE JOB</string>
+    <string name="result_category_suspicious">SUSPICIOUS</string>
+    <string name="result_category_spam">SPAM</string>
+    <string name="result_category_bec_fraud">BEC FRAUD</string>
+    <string name="result_category_spoofing">SPOOFING / RELAY FRAUD</string>
+    <string name="result_category_unavailable">NOT ANALYZED</string>
+
+    <string name="result_summary_safe">No malicious markers or suspicious links were identified.</string>
+    <string name="result_summary_warning">Suspicious elements were found. Continue with caution.</string>
+    <string name="result_summary_danger">High-risk scam indicators were found. Do not open links or share sensitive information.</string>
+    <string name="result_summary_incomplete">Unable to read text clearly via OCR. For Tamil/regional languages, please use Accessibility Scan.</string>
+    <string name="result_recommendations_header">RECOMMENDATIONS:</string>
+    <string name="result_recommendation_safe">Content looks normal. Stay vigilant.</string>
+    <string name="result_recommendation_warning_one">Verify the sender through an official channel.</string>
+    <string name="result_recommendation_warning_two">Avoid entering credentials on unverified pages.</string>
+    <string name="result_recommendation_danger_one">Do not tap links or enter a UPI PIN.</string>
+    <string name="result_recommendation_danger_two">Never share OTPs, passwords, or bank details.</string>
+    <string name="result_recommendation_danger_three">Block the sender and delete the message.</string>
+    <string name="result_recommendation_incomplete_one">Use Accessibility Scan for 100% accurate reading of regional language messages.</string>
+    <string name="result_recommendation_incomplete_two">Or re-circle only English / Latin text with high contrast.</string>
+
+    <string name="result_expand_report">▼ Expand Full Threat Report</string>
+    <string name="result_collapse_report">▲ Collapse Threat Report</string>
+    <string name="result_report_header">PER-MODEL RISK BREAKDOWN</string>
+    <string name="result_component_score_format">%1$d%% risk</string>
+    <string name="result_component_not_applicable">N/A</string>
+    <string name="result_component_detail_safe">No suspicious signal found</string>
+    <string name="result_component_detail_warning">Use caution with this signal</string>
+    <string name="result_component_detail_danger">High-risk signal found</string>
+    <string name="result_component_upi">UPI Collect Detector</string>
+    <string name="result_component_url">URL Forensics</string>
+    <string name="result_component_nlp">Text Pattern Analysis</string>
+    <string name="result_component_heuristic">Heuristic Analysis</string>
+    <string name="result_component_typosquat">Brand Impersonation Check</string>
+    <string name="result_component_cloud">Cloud AI Analysis</string>
+    <string name="result_component_security">Security Analysis</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.MessageGuard" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#1a73e8</item>
+        <item name="colorPrimaryVariant">#1557b0</item>
+        <item name="colorOnPrimary">#ffffff</item>
+        <item name="colorSecondary">#34a853</item>
+        <item name="colorOnSecondary">#ffffff</item>
+        <item name="colorSurface">#ffffff</item>
+        <item name="colorOnSurface">#202124</item>
+        <item name="android:statusBarColor">@color/colorPrimary</item>
+    </style>
+
+    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
