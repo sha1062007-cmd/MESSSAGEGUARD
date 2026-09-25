@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Threat Intelligence Service
+MessageGuard — SIH26106 Threat Intelligence Service
 ===================================================
 Provides network-layer threat intelligence:
 - IP classification (PUBLIC, PRIVATE, LOOPBACK, LINK_LOCAL, RESERVED, INVALID) via `ipaddress`

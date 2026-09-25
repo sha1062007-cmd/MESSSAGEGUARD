@@ -43,7 +43,7 @@ data class RiskAssessment(
     val correlationSummary: String? = null,
     val campaignSummary: String? = null,
     val investigationGraphSummary: String? = null,
-    /** Backend PS106 case_id (e.g. "PS106-ABCD1234") set when the assessment was produced by the backend pipeline. Null for local Circle-to-Scan results. */
+    /** Backend case_id (e.g. "MG-ABCD1234") set when the assessment was produced by the backend pipeline. Null for local Circle-to-Scan results. */
     val backendCaseId: String? = null,
     /** Sender email address, used to deep-link "Open in Gmail" to filter the inbox for this sender. */
     val senderEmail: String? = null,

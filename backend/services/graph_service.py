@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Investigation Graph Service
+MessageGuard — SIH26106 Investigation Graph Service
 ==================================================
 Builds a forensic relationship graph (nodes & edges) for analyzed cases:
 Nodes:

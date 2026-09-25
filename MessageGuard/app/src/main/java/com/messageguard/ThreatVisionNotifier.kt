@@ -1,4 +1,4 @@
-﻿package com.messageguard
+package com.messageguard
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -75,8 +75,8 @@ object ThreatVisionNotifier {
 
         val icon = android.R.drawable.ic_dialog_alert
         val title = when (result.verdict) {
-            Verdict.DANGER  -> "Threat Detected — ${result.appSource}"
-            Verdict.WARNING -> "Suspicious Content — ${result.appSource}"
+            Verdict.DANGER  -> "MessageGuard — Threat Detected (${result.appSource})"
+            Verdict.WARNING -> "MessageGuard — Suspicious Content (${result.appSource})"
             else -> return
         }
         val color = when (result.verdict) {

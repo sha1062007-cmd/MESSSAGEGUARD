@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Cross-Case Correlation Service
+MessageGuard — SIH26106 Cross-Case Correlation Service
 =====================================================
 Provides cross-case indicator correlation and attribution support across
 persisted forensic cases in SQLite:

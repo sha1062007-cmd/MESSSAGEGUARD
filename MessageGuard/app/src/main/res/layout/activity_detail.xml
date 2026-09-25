@@ -27,6 +27,24 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MessageGuard Investigation"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#0D47A1"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SIH Problem Statement: SIH26106"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="#546E7A"
+                    android:layout_marginBottom="8dp"/>
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -667,85 +685,7 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- 8.5 Verdict Feedback Control -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_verdict_feedback"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#CFD8DC">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:id="@+id/tv_feedback_title"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Was this verdict correct?"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="#263238"
-                    android:layout_marginBottom="6dp"/>
-
-                <TextView
-                    android:id="@+id/tv_feedback_subtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Your feedback trains our local model calibration &amp; fine-tunes future detections."
-                    android:textSize="11sp"
-                    android:textColor="#78909C"
-                    android:layout_marginBottom="12dp"/>
-
-                <LinearLayout
-                    android:id="@+id/layout_feedback_buttons"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_feedback_yes"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_weight="1"
-                        android:text="Correct 👍"
-                        android:textSize="12sp"
-                        android:textColor="#2E7D32"
-                        app:strokeColor="#2E7D32"
-                        android:layout_marginEnd="6dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_feedback_no"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_weight="1"
-                        android:text="Incorrect 👎"
-                        android:textSize="12sp"
-                        android:textColor="#C62828"
-                        app:strokeColor="#C62828"
-                        android:layout_marginStart="6dp"/>
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/tv_feedback_status"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Thank you! Feedback recorded for model tuning."
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:textColor="#2E7D32"
-                    android:gravity="center"
-                    android:visibility="gone"
-                    android:layout_marginTop="8dp"/>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
         <!-- 9. Metadata Details -->
         <com.google.android.material.card.MaterialCardView

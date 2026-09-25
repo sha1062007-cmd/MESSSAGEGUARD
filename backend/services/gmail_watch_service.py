@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Gmail Watch Service
+MessageGuard — SIH26106 Gmail Watch Service
 ==========================================
 Handles OAuth2 credential management and Gmail API operations:
 - Builds credentials from persistent GMAIL_REFRESH_TOKEN

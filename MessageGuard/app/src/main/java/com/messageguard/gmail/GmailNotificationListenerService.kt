@@ -22,8 +22,8 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * PS106 Threat Vision — Gmail Notification Listener Service
- * ===========================================================
+ * MessageGuard — SIH26106 Email Threat Notification Listener Service
+ * ====================================================================
  * Intercepts incoming email notifications from major email clients:
  *   - Gmail          (com.google.android.gm)
  *   - Outlook        (com.microsoft.office.outlook)
@@ -33,9 +33,9 @@ import java.util.concurrent.TimeUnit
  *
  * Flow:
  *   1. Raw notification is instantly suppressed (cancelNotification)
- *   2. Shows transient ongoing notification: "🛡️ Threat Vision: Analyzing Incoming Email..."
- *   3. Forwards {sender, subject, snippet} to Python FastAPI backend POST /api/analyze-trigger
- *   4. Receives PS106 4-band verdict (SAFE/UNVERIFIED/SUSPICIOUS/MALICIOUS)
+ *   2. Shows transient ongoing notification: "🛡️ MessageGuard: Analyzing Incoming Email..."
+ *   3. Forwards {sender, subject, snippet} to FastAPI backend POST /api/analyze-trigger
+ *   4. Receives 4-band verdict (SAFE/UNVERIFIED/SUSPICIOUS/MALICIOUS)
  *   5. Renders color-coded replacement notification with risk score
  *   6. Tapping notification opens DetailActivity with full forensic evidence
  */
@@ -314,13 +314,13 @@ class GmailNotificationListenerService : NotificationListenerService() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_VERDICT)
             .setSmallIcon(R.drawable.ic_shield)
-            .setContentTitle("$emoji $bandLabel — Risk: $riskScore/100")
+            .setContentTitle("MessageGuard — $emoji $bandLabel ($riskScore/100)")
             .setContentText("From: $sender")
-            .setSubText("MessageGuard Email Security")
+            .setSubText("MessageGuard • SIH26106")
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .bigText("$summary\n\nFrom: $sender\nSubject: $subject\nCase: $caseId")
-                    .setBigContentTitle("$emoji $bandLabel — Risk Score: $riskScore/100")
+                    .setBigContentTitle("MessageGuard — $emoji $bandLabel ($riskScore/100)")
             )
             .setColor(color)
             .setColorized(true)

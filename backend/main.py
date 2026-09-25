@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — FastAPI Backend Entry Point
+MessageGuard — SIH26106 FastAPI Backend Entry Point
 ===================================================
 Main server exposing:
   POST /api/analyze-trigger   — Android notification trigger (sender/subject/snippet)
@@ -13,7 +13,7 @@ Architecture:
   3. Verifies SPF, DKIM, DMARC from Authentication-Results header
   4. Runs content analysis (URLs, phishing NLP, spoofing heuristics)
   5. Extracts relay IPs and resolves GeoIP (City, Country, ISP)
-  6. Computes cumulative PS106 risk score (0-100) with 4-band verdict
+  6. Computes cumulative SIH26106 risk score (0-100) with 4-band verdict
   7. Generates downloadable forensic PDF report
 """
 
@@ -116,7 +116,7 @@ class AnalyzeEmailRequest(BaseModel):
 
 
 class AnalysisResponse(BaseModel):
-    """PS106 analysis result returned to Android."""
+    """MessageGuard SIH26106 analysis result returned to Android."""
     case_id: str
     verdict: str
     risk_score: int
@@ -248,7 +248,7 @@ def calculate_ps106_risk_score(
     geoip_result: dict,
 ) -> dict:
     """
-    Calculate cumulative PS106 risk score (0-100) and 4-band verdict.
+    Calculate cumulative SIH26106 risk score (0-100) and 4-band verdict.
 
     Strict Weighted Ratio:
     - ML Content Models: 60%
@@ -371,7 +371,7 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
     1. Receives {sender, subject, snippet} from notification interception
     2. Fetches full RFC 822 email via Gmail API
     3. Runs SPF/DKIM/DMARC, content, and GeoIP analysis
-    4. Returns PS106 verdict with risk score and report URL
+    4. Returns SIH26106 4-band verdict with risk score and report URL
     """
     logger.info(f"analyze-trigger: sender={request.sender}, subject={request.subject[:50]}")
 
@@ -781,5 +781,5 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.getenv("PORT", 8000))
-    logger.info(f"Starting PS106 Threat Vision Backend on port {port}")
+    logger.info(f"Starting MessageGuard SIH26106 Backend on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

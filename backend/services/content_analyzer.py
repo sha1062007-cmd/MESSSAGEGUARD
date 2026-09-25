@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Content Analyzer Service
+MessageGuard — SIH26106 Content Analyzer Service
 ================================================
 Performs deep content analysis on email bodies:
 - URL extraction and domain reputation classification

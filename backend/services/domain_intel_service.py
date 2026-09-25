@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Domain Intelligence Service
+MessageGuard — SIH26106 Domain Intelligence Service
 ===================================================
 Provides domain-level intelligence:
 - DNS record lookups (MX, A, NS) via dnspython with strict 3-second timeout

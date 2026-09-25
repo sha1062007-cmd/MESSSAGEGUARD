@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Campaign Grouping Service
+MessageGuard — SIH26106 Campaign Grouping Service
 ================================================
 Groups related fraudulent email cases into campaigns (CAMPAIGN-xxxx)
 when multiple correlation signals or high-confidence IOCs align:

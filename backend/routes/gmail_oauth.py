@@ -1,5 +1,5 @@
 """
-PS106 Threat Vision — Gmail OAuth2 Routes
+MessageGuard — SIH26106 Gmail OAuth2 Routes
 ==========================================
 Exposes OAuth2 flow endpoints:
 - GET /api/gmail/login — Initiates OAuth2 authorization flow
