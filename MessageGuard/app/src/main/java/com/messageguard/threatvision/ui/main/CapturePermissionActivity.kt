@@ -7,7 +7,6 @@ import android.graphics.drawable.ColorDrawable
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import com.messageguard.threatvision.service.MediaProjectionService
-import com.messageguard.threatvision.service.OverlaySelectionService
 
 /**
  * Transparent, zero-UI Activity whose sole purpose is to host the system
@@ -33,8 +32,7 @@ class CapturePermissionActivity : Activity() {
         window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
 
         if (intent.getBooleanExtra(EXTRA_USE_ACTIVE_PROJECTION, false) && MediaProjectionService.isSessionActive) {
-            android.util.Log.d("ThreatVisionLog", "Quick Settings scan: reusing active projection session.")
-            startService(Intent(this, OverlaySelectionService::class.java))
+            android.util.Log.d("ThreatVisionLog", "Active projection session detected; no automatic scan is started. User must tap the floating bubble for Circle-to-Scan.")
             finish()
             return
         }

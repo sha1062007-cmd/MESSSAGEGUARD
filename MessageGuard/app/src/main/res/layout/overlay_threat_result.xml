@@ -53,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Risk Score: 5%"
-            android:textColor="#E0E0E0"
+            android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
             android:layout_marginEnd="16dp" />
@@ -63,7 +63,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Category: SAFE"
-            android:textColor="#B0BEC5"
+            android:textColor="#ECEFF1"
+            android:textStyle="bold"
             android:textSize="13sp" />
     </LinearLayout>
 
@@ -101,7 +102,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="No known threat markers or suspicious URLs found."
-        android:textColor="#ECEFF1"
+        android:textColor="#FFFFFF"
         android:textSize="13sp"
         android:lineSpacingExtra="3dp"
         android:layout_marginBottom="10dp" />
@@ -112,8 +113,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="RECOMMENDATIONS:"
-        android:textColor="#90A4AE"
-        android:textSize="10sp"
+        android:textColor="#CFD8DC"
+        android:textSize="11sp"
         android:textStyle="bold"
         android:letterSpacing="0.05"
         android:layout_marginBottom="4dp" />
@@ -124,7 +125,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="• Be careful with unknown links.\n• Stay vigilant."
-        android:textColor="#B0BEC5"
+        android:textColor="#ECEFF1"
         android:textSize="12sp"
         android:lineSpacingExtra="4dp"
         android:layout_marginBottom="8dp" />
@@ -217,5 +218,22 @@
             android:textStyle="bold"
             android:clickable="true"
             android:focusable="true" />
+
+        <TextView
+            android:id="@+id/btn_open_in_gmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="#1A4CAF50"
+            android:gravity="center"
+            android:padding="8dp"
+            android:text="📧 Open in Gmail"
+            android:textColor="#69F0AE"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>
+

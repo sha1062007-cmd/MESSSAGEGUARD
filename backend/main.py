@@ -68,7 +68,7 @@ logger = logging.getLogger("ps106.main")
 #  FastAPI App
 # --------------------------------------------------------------------------- #
 app = FastAPI(
-    title="PS106 Threat Vision Backend",
+    title="MessageGuard Threat Vision Backend",
     description="Email security analysis API for MessageGuard Android application",
     version="1.0.0",
 )
@@ -101,6 +101,10 @@ class AnalyzeTriggerRequest(BaseModel):
     sender: str
     subject: str
     snippet: str = ""
+    body: str = ""
+    urls: list = []
+    authentication_results: str = ""
+    received_headers: list = []
 
 
 class AnalyzeEmailRequest(BaseModel):
@@ -251,16 +255,16 @@ def calculate_ps106_risk_score(
     - Gmail API / Authentication (SPF/DKIM/DMARC): 40%
     """
     auth_checks = [auth_result.get("spf", {}), auth_result.get("dkim", {}), auth_result.get("dmarc", {})]
-    has_auth_data = any(c.get("status") != "unknown" for c in auth_checks)
+    has_auth_data = any(c.get("status", "").upper() not in ("UNKNOWN", "") for c in auth_checks)
     
     # 1. Authentication / Gmail API verification score (0-100)
     auth_score = 0
     if has_auth_data:
         for check in auth_checks:
-            status = check.get("status", "unknown")
-            if status == "fail":
+            status = check.get("status", "UNKNOWN").upper()
+            if status == "FAIL":
                 auth_score += 33
-            elif status == "unknown":
+            elif status in ("UNKNOWN", "NONE", "TEMPERROR", "PERMERROR"):
                 auth_score += 10
     else:
         # Neutral if auth headers absent (snippet trigger)
@@ -295,15 +299,22 @@ def calculate_ps106_risk_score(
         risk_band = "LOW"
         risk_color = "#4CAF50"
 
-    # Override: clean text with no threat signals evaluates to SAFE
+    # Override: clean text with no significant threat signals evaluates to SAFE
     if ml_model_score < 20 and auth_score < 30:
         verdict = "SAFE"
         risk_band = "LOW"
         risk_color = "#4CAF50"
         final_score = min(final_score, 10)
 
-    # Force VERIFIED if auth passes and content is clean
-    if has_auth_data and all(c.get("status") == "pass" for c in auth_checks) and ml_model_score < 20:
+    # Override: when auth fully passes and content score is marginal (single minor hit), still score SAFE
+    if has_auth_data and auth_result.get("domain_authorization_status") == "DOMAIN_AUTHORIZED" and ml_model_score <= 35:
+        verdict = "SAFE"
+        risk_band = "LOW"
+        risk_color = "#4CAF50"
+        final_score = min(final_score, 15)
+
+    # Force VERIFIED if auth passes AND content is truly clean
+    if has_auth_data and all(c.get("status") == "pass" for c in auth_checks) and ml_model_score <= 35:
         verdict = "VERIFIED"
         risk_band = "LOW"
         risk_color = "#4CAF50"
@@ -330,7 +341,7 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "service": "PS106 Threat Vision Backend",
+        "service": "MessageGuard Threat Vision Backend",
         "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "gmail_configured": bool(os.getenv("GMAIL_REFRESH_TOKEN")),
@@ -351,26 +362,44 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
     logger.info(f"analyze-trigger: sender={request.sender}, subject={request.subject[:50]}")
 
     try:
-        # Step 1: Fetch full email from Gmail API
-        email_data = gmail_service.search_and_fetch_message(
-            sender=request.sender,
-            subject=request.subject,
-            snippet=request.snippet,
-        )
-
-        if email_data is None:
-            logger.warning("Could not fetch email from Gmail API, analyzing with trigger data only")
-            # Fallback: analyze with just the trigger data
+        # Step 1: Use direct payload if provided (from Android listener or test harness)
+        # Only query Gmail API if neither body nor headers were supplied in the trigger.
+        if request.body or request.snippet or request.authentication_results or request.received_headers:
             email_data = {
                 "sender": request.sender,
                 "to": os.getenv("GMAIL_USER_EMAIL", ""),
                 "subject": request.subject,
-                "text_body": request.snippet,
+                "text_body": request.body or request.snippet,
                 "html_body": "",
-                "urls": [],
+                "urls": request.urls,
                 "attachments": [],
-                "authentication_results": "",
-                "received_headers": [],
+                "authentication_results": request.authentication_results,
+                "received_headers": request.received_headers,
+                "raw_headers": {},
+                "date": datetime.utcnow().isoformat(),
+                "message_id": "",
+                "reply_to": "",
+            }
+        else:
+            logger.info("Trigger payload lacks body/headers; attempting Gmail API fetch...")
+            email_data = gmail_service.search_and_fetch_message(
+                sender=request.sender,
+                subject=request.subject,
+                snippet=request.snippet,
+            )
+
+        if email_data is None:
+            logger.warning("Could not fetch email from Gmail API, analyzing with trigger data only")
+            email_data = {
+                "sender": request.sender,
+                "to": os.getenv("GMAIL_USER_EMAIL", ""),
+                "subject": request.subject,
+                "text_body": request.body or request.snippet,
+                "html_body": "",
+                "urls": request.urls,
+                "attachments": [],
+                "authentication_results": request.authentication_results,
+                "received_headers": request.received_headers,
                 "raw_headers": {},
                 "date": datetime.utcnow().isoformat(),
                 "message_id": "",
@@ -623,6 +652,24 @@ async def purge_retention(retention_days: int = 90):
     """Configurable retention control endpoint to purge records older than N days."""
     res = report_service.purge_expired_cases(retention_days=retention_days)
     return res
+
+
+@app.delete("/api/cases/{case_id}")
+async def delete_case(case_id: str):
+    """
+    Delete a single forensic case record by case_id.
+    Removes the SQLite entry, associated indicators, and the PDF file from disk.
+    Called by the Android app when the user taps 'Delete This Record' in the Detail view.
+    """
+    result = report_service.delete_case(case_id)
+    if result.get("status") == "INVALID_ID":
+        raise HTTPException(status_code=400, detail=result.get("error", "Invalid case_id format"))
+    if result.get("status") == "NOT_FOUND":
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+    if result.get("status") == "ERROR":
+        raise HTTPException(status_code=500, detail=result.get("error", "Delete failed"))
+    return result
+
 
 
 # --------------------------------------------------------------------------- #

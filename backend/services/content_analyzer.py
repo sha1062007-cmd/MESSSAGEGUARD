@@ -36,13 +36,19 @@ TRUSTED_DOMAINS = {
     "outlook.com", "apple.com", "amazon.com", "facebook.com",
     "linkedin.com", "twitter.com", "github.com", "paypal.com",
     "netflix.com", "instagram.com", "whatsapp.com",
+    "nptel.iitm.ac.in", "nptel.ac.in", "iitm.ac.in", "swayam.gov.in",
+    "coursera.org", "edx.org", "udemy.com", "zoom.us", "google.co.in",
+}
+
+EDUCATIONAL_SENDER_KEYWORDS = {
+    "onlinecourses", "nptel", "swayam", "coursera", "edx", "udemy", "canvas", "blackboard", "moodle"
 }
 
 URGENCY_PHRASES = [
     "act now", "urgent", "immediately", "your account will be",
     "suspended", "verify your", "confirm your identity",
     "click here", "limited time", "expires today",
-    "unauthorized access", "unusual activity", "security alert",
+    "unauthorized access", "unusual activity",
     "update your payment", "confirm your payment",
     "you have been selected", "congratulations",
     "you've won", "claim your prize", "lottery",
@@ -59,6 +65,21 @@ CREDENTIAL_PHRASES = [
 SPOOFING_INDICATORS = [
     "noreply", "no-reply", "support@", "security@",
     "admin@", "helpdesk@", "alert@",
+]
+
+# Patterns for SENSITIVE_DATA_EXPOSURE detection
+# Matches: email:password, password: value, API keys, OTP values, SSN-like strings
+CREDENTIAL_EXPOSURE_PATTERNS = [
+    # email + password combos
+    (r'[\w.+-]+@[\w.-]+\.[a-z]{2,}\s*[:|]\s*\S{4,}', 'email:password credential pair'),
+    # Explicit password labels
+    (r'(?:password|passwd|pwd|pass)\s*[:=]\s*\S{4,}', 'plaintext password'),
+    # API keys / tokens (generic)
+    (r'(?:api[_-]?key|token|secret|access[_-]?key)\s*[:=]\s*[\w\-+/]{16,}', 'API key/token'),
+    # OTP presented as static value in body
+    (r'\bOTP\s*(?:is|:)\s*\d{4,8}\b', 'static OTP'),
+    # Private keys
+    (r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----', 'private key block'),
 ]
 
 
@@ -240,20 +261,34 @@ class ContentAnalyzer:
         detected_categories = set()
 
         # 0. Domain Intelligence Risk (Newly Registered Domain Signal)
+        sender_lower = (sender or "").lower()
         if domain_intel:
             sender_d_intel = domain_intel.get("sender_domain", {})
+            domain_str = (sender_d_intel.get("domain") or "").lower().strip()
             age = sender_d_intel.get("age_days")
-            if sender_d_intel.get("is_young_domain"):
-                scores.append(85)
-                risk_factors.append(f"Newly registered domain: '{sender_d_intel.get('domain')}' created {age} days ago (<30 days — high risk indicator)")
-                detected_categories.add("SUSPICIOUS")
-            elif age is not None and age < 90:
-                scores.append(40)
-                risk_factors.append(f"Recent domain registration: '{sender_d_intel.get('domain')}' created {age} days ago")
 
-            if not sender_d_intel.get("has_mx", True) and sender_d_intel.get("status") == "RESOLVED":
-                scores.append(60)
-                risk_factors.append(f"Domain '{sender_d_intel.get('domain')}' lacks valid DNS MX mail exchange records")
+            is_domain_trusted = (
+                domain_str in TRUSTED_DOMAINS
+                or any(domain_str.endswith("." + td) for td in TRUSTED_DOMAINS)
+                or domain_str.endswith((".ac.in", ".edu", ".edu.in", ".gov", ".gov.in"))
+                or any(kw in domain_str for kw in EDUCATIONAL_SENDER_KEYWORDS)
+                or any(kw in sender_lower for kw in EDUCATIONAL_SENDER_KEYWORDS)
+            )
+
+            if not is_domain_trusted:
+                if sender_d_intel.get("is_young_domain"):
+                    scores.append(85)
+                    risk_factors.append(f"Newly registered domain: '{domain_str}' created {age} days ago (<30 days — high risk indicator)")
+                    detected_categories.add("SUSPICIOUS")
+                elif age is not None and age < 90:
+                    scores.append(40)
+                    risk_factors.append(f"Recent domain registration: '{domain_str}' created {age} days ago")
+
+                if not sender_d_intel.get("has_mx", True) and sender_d_intel.get("status") == "RESOLVED":
+                    # Only flag if this is a real email domain (contains a dot — not an app name or device label)
+                    if domain_str and "." in domain_str and len(domain_str) > 4:
+                        scores.append(60)
+                        risk_factors.append(f"Domain '{domain_str}' lacks valid DNS MX mail exchange records")
 
         # 1. URL Analysis
         url_results = self._analyze_urls(urls)
@@ -341,6 +376,22 @@ class ContentAnalyzer:
                     f"{mismatch_count} link(s) with mismatched display text vs. actual URL"
                 )
 
+        # 7. SENSITIVE_DATA_EXPOSURE detection (HIGH severity — independent of sender trust)
+        exposure_findings = []
+        full_content_for_exposure = f"{subject_for_nlp} {content_for_nlp}"
+        for pattern, label in CREDENTIAL_EXPOSURE_PATTERNS:
+            matches = re.findall(pattern, full_content_for_exposure, re.IGNORECASE)
+            for match in matches:
+                # Mask the credential for storage/reporting
+                masked = re.sub(r'([:=]\s*)(\S{2})(\S+)', r'\1\2***', match)
+                exposure_findings.append({"type": label, "masked_sample": masked})
+        if exposure_findings:
+            scores.append(95)  # HIGH severity — cannot be overridden by sender trust
+            detected_categories.add("SENSITIVE_DATA_EXPOSURE")
+            risk_factors.append(
+                f"SENSITIVE DATA EXPOSED: {', '.join(set(f['type'] for f in exposure_findings))} — credentials MASKED in report"
+            )
+
         # Classify categories per SIH forensic requirement:
         # SAFE · SPAM · PHISHING · SPOOFED · IMPERSONATION · MALWARE · BEC · FRAUD · SUSPICIOUS
         if any(att.get("filename", "").lower().endswith(ext) for att in attachments for ext in dangerous_extensions) or any(att.get("sha256") in known_bad_hashes for att in attachments):
@@ -360,8 +411,10 @@ class ContentAnalyzer:
 
         content_risk = max(scores) if scores else 0
 
-        # Determine Primary Category
-        if "MALWARE" in detected_categories:
+        # Determine Primary Category (priority order: highest threat first)
+        if "SENSITIVE_DATA_EXPOSURE" in detected_categories:
+            primary_cat = "SENSITIVE_DATA_EXPOSURE"
+        elif "MALWARE" in detected_categories:
             primary_cat = "MALWARE"
         elif "PHISHING" in detected_categories:
             primary_cat = "PHISHING"
@@ -413,6 +466,7 @@ class ContentAnalyzer:
             "primary_category": primary_cat,
             "secondary_categories": sec_cats,
             "forwarding_analysis": forwarding_analysis,
+            "sensitive_data_exposure": exposure_findings,
         }
 
     def _analyze_urls(self, urls: List[str]) -> List[Dict[str, Any]]:
@@ -428,7 +482,7 @@ class ContentAnalyzer:
                 is_trusted = any(
                     domain_lower == td or domain_lower.endswith(f".{td}")
                     for td in TRUSTED_DOMAINS
-                )
+                ) or domain_lower.endswith((".ac.in", ".edu", ".edu.in", ".gov", ".gov.in"))
                 suspicious_tld = any(
                     domain_lower.endswith(tld) for tld in SUSPICIOUS_TLDS
                 )

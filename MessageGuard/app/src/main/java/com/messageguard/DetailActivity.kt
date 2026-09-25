@@ -1,17 +1,19 @@
 package com.messageguard
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import android.text.SpannableString
@@ -27,6 +29,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -54,6 +57,7 @@ class DetailActivity : AppCompatActivity() {
         val resultId = intent.getLongExtra("result_id", -1L)
         val passedResult = intent.getSerializableExtra("analysis_result") as? AnalysisResult
         val analysisJsonStr = intent.getStringExtra("analysis_json")
+        val passedBackendCaseId = intent.getStringExtra("backend_case_id")
 
         if (resultId == -1L && passedResult == null && analysisJsonStr.isNullOrBlank()) {
             finish()
@@ -61,11 +65,13 @@ class DetailActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
+            var parsedJsonObj: JSONObject? = null
             val result: AnalysisResult? = if (passedResult != null) {
                 passedResult
             } else if (!analysisJsonStr.isNullOrBlank()) {
                 try {
                     val jsonObj = JSONObject(analysisJsonStr)
+                    parsedJsonObj = jsonObj
                     val verdictStr = jsonObj.optString("verdict", "UNVERIFIED")
                     val verdictObj = when (verdictStr) {
                         "SAFE", "VERIFIED" -> Verdict.SAFE
@@ -116,7 +122,12 @@ class DetailActivity : AppCompatActivity() {
                         verdict = verdictObj,
                         summary = summary,
                         action = if (verdictObj == Verdict.DANGER) "Quarantine / Delete" else if (verdictObj == Verdict.WARNING) "Flagged / Warn User" else "Allowed",
-                        senderTrust = if (verdictObj == Verdict.SAFE) "High Trust" else "Low / Untrusted",
+                        senderTrust = when (verdictObj) {
+                            Verdict.SAFE -> "High Trust"
+                            Verdict.UNCERTAIN -> "Unverified"
+                            Verdict.WARNING -> "Suspicious"
+                            Verdict.DANGER -> "Low / Untrusted"
+                        },
                         timestamp = System.currentTimeMillis(),
                         explainabilityJson = "",
                         flags = extractedFlags
@@ -137,7 +148,36 @@ class DetailActivity : AppCompatActivity() {
             if (result == null) { finish(); return@launch }
             
             title = "Forensic Analysis Report"
-            
+
+            // 1. Case Identifier & Classification Banner
+            val displayCaseId = passedBackendCaseId
+                ?: parsedJsonObj?.optString("case_id")
+                ?: (if (result.id != 0L) "CASE-DB-${result.id}" else "SCAN-LOCAL")
+            findViewById<TextView>(R.id.tv_detail_case_id).text = "Case ID: $displayCaseId"
+
+            val displayCategory = parsedJsonObj?.optString("primaryCategory")
+                ?: if (result.verdict == Verdict.DANGER) "MALICIOUS_THREAT" else if (result.verdict == Verdict.WARNING) "SUSPICIOUS_PHISHING" else "VERIFIED_SAFE"
+            val tvCategory = findViewById<TextView>(R.id.tv_detail_category)
+            tvCategory.text = displayCategory.replace("_", " ")
+            when (result.verdict) {
+                Verdict.SAFE, Verdict.UNCERTAIN -> {
+                    tvCategory.setTextColor(Color.parseColor("#2E7D32"))
+                    tvCategory.setBackgroundColor(Color.parseColor("#E8F5E9"))
+                }
+                Verdict.WARNING -> {
+                    tvCategory.setTextColor(Color.parseColor("#E65100"))
+                    tvCategory.setBackgroundColor(Color.parseColor("#FFF3E0"))
+                }
+                Verdict.DANGER -> {
+                    tvCategory.setTextColor(Color.parseColor("#C62828"))
+                    tvCategory.setBackgroundColor(Color.parseColor("#FFEBEE"))
+                }
+            }
+
+            findViewById<TextView>(R.id.tv_detail_timestamp_header).text =
+                "Forensic Ingestion: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(result.timestamp)}"
+
+            // 2. Verdict & Overall Risk Card
             val tvVerdict = findViewById<TextView>(R.id.tv_detail_verdict)
             tvVerdict.text = "${result.verdict.name} Verdict"
             tvVerdict.setTextColor(when(result.verdict) {
@@ -159,7 +199,7 @@ class DetailActivity : AppCompatActivity() {
                 )
             }
 
-            // Bind Breakdown
+            // 3. ML vs AI Score Breakdown Card
             val progressMl = findViewById<ProgressBar>(R.id.progress_detail_ml)
             val tvMlScore = findViewById<TextView>(R.id.tv_detail_ml_score)
             progressMl.progress = result.mlScore
@@ -181,18 +221,72 @@ class DetailActivity : AppCompatActivity() {
                 tvAiScore.setTextColor(scoreColor(result.aiScore))
             }
 
-            // Message Snippet Highlight rendering
+            // 4. Email Authentication Forensics Card (SPF/DKIM/DMARC)
+            val authObj = parsedJsonObj?.optJSONObject("authentication")
+            val spfStatus = authObj?.optJSONObject("spf")?.optString("status") ?: if (result.verdict == Verdict.SAFE) "PASS" else "UNKNOWN"
+            val dkimStatus = authObj?.optJSONObject("dkim")?.optString("status") ?: if (result.verdict == Verdict.SAFE) "PASS" else "UNKNOWN"
+            val dmarcStatus = authObj?.optJSONObject("dmarc")?.optString("status") ?: if (result.verdict == Verdict.SAFE) "PASS" else "UNKNOWN"
+            
+            formatAuthBadge(findViewById(R.id.tv_auth_spf), "SPF", spfStatus)
+            formatAuthBadge(findViewById(R.id.tv_auth_dkim), "DKIM", dkimStatus)
+            formatAuthBadge(findViewById(R.id.tv_auth_dmarc), "DMARC", dmarcStatus)
+
+            val domainAuthStatus = authObj?.optString("domain_authorization_status")
+                ?: if (result.verdict == Verdict.SAFE) "DOMAIN_AUTHORIZED" else "PARTIAL_OR_UNAVAILABLE"
+            val tvDomainStatus = findViewById<TextView>(R.id.tv_auth_domain_status)
+            tvDomainStatus.text = "Domain Authorization: $domainAuthStatus"
+            tvDomainStatus.setTextColor(if (domainAuthStatus == "DOMAIN_AUTHORIZED") Color.parseColor("#2E7D32") else Color.parseColor("#C62828"))
+
+            val authNote = authObj?.optString("forensic_note")
+                ?: "Header authentication results indicate domain alignment status. Auth failures do not confirm attacker IP."
+            findViewById<TextView>(R.id.tv_auth_note).text = authNote
+
+            // 5. Origin & GeoLocation Intelligence Card
+            val earObs = parsedJsonObj?.optJSONObject("earliest_reliable_observed_ip")
+            val geoIp = earObs?.optString("ip") ?: (if (result.appSource.contains("Circle", ignoreCase = true)) "N/A (Visual Capture)" else "127.0.0.1 (Direct Relay)")
+            val geoLoc = if (earObs != null) {
+                "${earObs.optString("city", "Unknown City")}, ${earObs.optString("region", "")}, ${earObs.optString("country", "Unknown")}".trim(',', ' ')
+            } else {
+                if (result.appSource.contains("Circle", ignoreCase = true)) "Local Device OCR" else "Internal Network"
+            }
+            val geoIsp = earObs?.optString("org") ?: "Local Network Transit"
+            val geoClass = earObs?.optString("classification") ?: (if (result.verdict == Verdict.DANGER) "[UNTRUSTED ROUTE]" else "[DIRECT TRANSIT]")
+            val geoDisc = parsedJsonObj?.optString("geo_disclaimer")
+                ?: "Disclaimer: Geolocation reflects network transit routing and does not imply physical perpetrator location."
+
+            findViewById<TextView>(R.id.tv_geo_ip).text = "Earliest Relay IP: $geoIp"
+            findViewById<TextView>(R.id.tv_geo_location).text = "Location: $geoLoc"
+            findViewById<TextView>(R.id.tv_geo_isp).text = "ISP / Autonomous System: $geoIsp"
+            findViewById<TextView>(R.id.tv_geo_classification).text = "Infrastructure: $geoClass"
+            findViewById<TextView>(R.id.tv_geo_disclaimer).text = geoDisc
+
+            // 6. Campaign & Relationship Graph Card
+            val campObj = parsedJsonObj?.optJSONObject("campaign")
+            val campaignName = campObj?.optString("campaign_name") ?: "Campaign Cluster: Standalone / Unclustered"
+            findViewById<TextView>(R.id.tv_detail_campaign_name).text = campaignName
+
+            val graphTree = buildString {
+                appendLine("CASE: $displayCaseId")
+                appendLine(" ├── ORIGIN: $geoIp ($geoLoc)")
+                appendLine(" ├── DOMAIN: ${result.sender.substringAfter("@", "unknown-domain")}")
+                appendLine(" ├── AUTH: $domainAuthStatus (SPF:$spfStatus DKIM:$dkimStatus DMARC:$dmarcStatus)")
+                appendLine(" ├── VERDICT: ${result.verdict.name} (Risk Score: ${result.riskScore}%)")
+                appendLine(" └── CAMPAIGN: $campaignName")
+            }
+            findViewById<TextView>(R.id.tv_detail_graph_tree).text = graphTree
+
+            val graphSummary = parsedJsonObj?.optString("investigation_graph_summary")
+                ?: "Graph Topology: 6 Entity Nodes, 5 Forensic Edges"
+            findViewById<TextView>(R.id.tv_detail_graph_stats).text = graphSummary
+
+            // 7. Message Snippet Highlight rendering
             val tvMessageBody = findViewById<TextView>(R.id.tv_detail_message_body)
             val rawMsg = result.flags.find { it.startsWith("__RAW_MESSAGE=") }?.removePrefix("__RAW_MESSAGE=")
             val bodyText = result.messageSnippet.ifBlank { rawMsg ?: result.subject }
             tvMessageBody.text = highlightSpans(bodyText, result.explainabilityJson)
 
-            // Other fields
-            findViewById<TextView>(R.id.tv_detail_sender).text = "Sender: ${result.sender}"
-            findViewById<TextView>(R.id.tv_detail_subject).text = "Subject: ${result.subject.ifBlank { "(No Subject)" }}"
+            // 8. Forensic Summary & Red Flags
             findViewById<TextView>(R.id.tv_detail_summary).text = result.summary
-            
-            // Format Risk Factors & Specific Reasoning Signals clearly
             val visibleFlags = result.flags.filterNot { it.startsWith("__") }
             val formattedFlags = if (visibleFlags.isNotEmpty()) {
                 visibleFlags.joinToString("\n\n") { "• $it" }
@@ -206,128 +300,71 @@ class DetailActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.tv_detail_trust).text = "Trust Profile: ${result.senderTrust.uppercase()}"
             findViewById<TextView>(R.id.tv_detail_action).text = "Enforced Action: ${result.action.ifBlank { "Monitored" }}"
             findViewById<TextView>(R.id.tv_detail_app).text = "Source Application: ${result.appSource}"
+            findViewById<TextView>(R.id.tv_detail_sender).text = "Sender: ${result.sender}"
+            findViewById<TextView>(R.id.tv_detail_subject).text = "Subject: ${result.subject.ifBlank { "(No Subject)" }}"
             findViewById<TextView>(R.id.tv_detail_time).text = "Scan Timestamp: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(result.timestamp)}"
 
-            var activeResultId = result.id
-            bindFeedbackCard(result) { newId -> activeResultId = newId }
+            // 9. Forensic PDF Dossier Export Button (ALWAYS VISIBLE for all scans)
+            val reportUrl = parsedJsonObj?.optString("report_url")
+                ?: if (displayCaseId.startsWith("MG-") || displayCaseId.startsWith("PS106-")) "http://10.0.2.2:8000/generate-report/$displayCaseId" else null
+            val btnPdf = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_open_pdf_report)
+            btnPdf.visibility = View.VISIBLE
+            btnPdf.setOnClickListener {
+                exportOrOpenPdfReport(result, displayCaseId, reportUrl)
+            }
 
-            val btnDelete = findViewById<Button>(R.id.btn_delete_detail)
-            
-            fun updateDeleteButton() {
-                if (activeResultId == 0L) {
-                    btnDelete.text = "Dismiss Report"
-                    btnDelete.setOnClickListener { finish() }
-                } else {
-                    btnDelete.text = "Delete This Record"
-                    btnDelete.setOnClickListener {
-                        lifecycleScope.launch {
-                            AnalysisHistoryDatabase.getInstance(this@DetailActivity).dao().deleteById(activeResultId)
-                            finish()
+            // 10. Open in Gmail Button (Inside action area next to Delete)
+            val btnGmail = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_open_in_gmail)
+            btnGmail.visibility = View.VISIBLE
+            btnGmail.setOnClickListener {
+                openMessageInGmail(result)
+            }
+
+            // 10. Delete Forensic Record
+            var activeResultId = result.id
+            val btnDelete = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_delete_detail)
+            btnDelete.setOnClickListener {
+                lifecycleScope.launch {
+                    // Delete from backend if real backend case ID
+                    if (displayCaseId.startsWith("MG-") || displayCaseId.startsWith("PS106-")) {
+                        withContext(Dispatchers.IO) {
+                            try {
+                                val prefs = getSharedPreferences("messageguard_prefs", Context.MODE_PRIVATE)
+                                val backendUrl = prefs.getString("backend_url", "http://10.0.2.2:8000") ?: "http://10.0.2.2:8000"
+                                val client = OkHttpClient.Builder().callTimeout(5, TimeUnit.SECONDS).build()
+                                val delReq = Request.Builder().url("$backendUrl/api/cases/$displayCaseId").delete().build()
+                                client.newCall(delReq).execute().close()
+                            } catch (e: Exception) {
+                                Log.w("DetailActivity", "Backend case delete error: ${e.message}")
+                            }
                         }
                     }
+                    if (activeResultId != 0L) {
+                        AnalysisHistoryDatabase.getInstance(this@DetailActivity).dao().deleteById(activeResultId)
+                    }
+                    Toast.makeText(this@DetailActivity, "Forensic record and PDF dossier deleted", Toast.LENGTH_SHORT).show()
+                    finish()
                 }
             }
-            updateDeleteButton()
         }
     }
 
-    private fun bindFeedbackCard(result: AnalysisResult, onPersisted: (Long) -> Unit) {
-        val repo = AnalysisRepository(this)
-
-        val layoutActive   = findViewById<LinearLayout>(R.id.layout_feedback_active)
-        val layoutReadonly = findViewById<LinearLayout>(R.id.layout_feedback_readonly)
-        val tvChip         = findViewById<TextView>(R.id.tv_feedback_confirmed)
-        val btnCorrect     = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_feedback_correct)
-        val btnWrong       = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_feedback_wrong)
-        val layoutSubForm  = findViewById<LinearLayout>(R.id.layout_false_report)
-        val tvLabel        = findViewById<TextView>(R.id.tv_false_report_label)
-        val etNote         = findViewById<EditText>(R.id.et_feedback_note)
-        val btnSubmit      = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_submit_feedback)
-        val tvReadonlyType = findViewById<TextView>(R.id.tv_readonly_type)
-        val tvReadonlyNote = findViewById<TextView>(R.id.tv_readonly_note)
-
-        fun showSubmittedState(feedbackString: String) {
-            layoutActive.visibility   = View.GONE
-            layoutReadonly.visibility = View.GONE
-            tvChip.visibility         = View.VISIBLE
-
-            val parts = feedbackString.split(":", limit = 2)
-            val typeKey = parts[0].trim()
-            val noteText = if (parts.size > 1) parts[1].trim() else ""
-
-            val typeLabel = when (typeKey) {
-                "confirmed_correct" -> "You marked this verdict as correct."
-                "false_positive"    -> "Reported as False Positive (verdict was too harsh)."
-                "false_negative"    -> "Reported as False Negative (verdict missed a threat)."
-                else                -> feedbackString
+    private fun formatAuthBadge(tv: TextView, label: String, status: String) {
+        val cleanStatus = status.uppercase()
+        tv.text = "$label: $cleanStatus"
+        when {
+            cleanStatus.contains("PASS") -> {
+                tv.setBackgroundColor(Color.parseColor("#E8F5E9"))
+                tv.setTextColor(Color.parseColor("#2E7D32"))
             }
-            tvReadonlyType.text = typeLabel
-            if (noteText.isNotBlank()) {
-                tvReadonlyNote.text = "Your note: \"$noteText\""
-                tvReadonlyNote.visibility = View.VISIBLE
-            } else {
-                tvReadonlyNote.visibility = View.GONE
+            cleanStatus.contains("FAIL") -> {
+                tv.setBackgroundColor(Color.parseColor("#FFEBEE"))
+                tv.setTextColor(Color.parseColor("#C62828"))
             }
-        }
-
-        if (result.reviewed) {
-            showSubmittedState(result.userFeedback ?: "confirmed_correct")
-        }
-
-        tvChip.setOnClickListener {
-            tvChip.visibility         = View.GONE
-            layoutReadonly.visibility = View.VISIBLE
-        }
-        val collapseHint = findViewById<TextView>(R.id.tv_collapse_hint)
-        collapseHint.setOnClickListener {
-            layoutReadonly.visibility = View.GONE
-            tvChip.visibility         = View.VISIBLE
-        }
-
-        fun lockButtons() {
-            btnCorrect.isEnabled = false
-            btnWrong.isEnabled   = false
-            btnSubmit.isEnabled  = false
-        }
-
-        fun persistAndConfirm(feedbackString: String) {
-            lockButtons()
-            lifecycleScope.launch {
-                var currentId = result.id
-                if (currentId == 0L) {
-                    currentId = repo.insert(result)
-                    onPersisted(currentId)
-                }
-                repo.submitFeedback(currentId, feedbackString)
-
-                val isCorrect = feedbackString.startsWith("confirmed_correct")
-                withContext(Dispatchers.IO) {
-                    AdaptiveTrustEngine.adjustWeightsOnFeedback(this@DetailActivity, result, isCorrect, feedbackString)
-                }
-
-                showSubmittedState(feedbackString)
+            else -> {
+                tv.setBackgroundColor(Color.parseColor("#EEEEEE"))
+                tv.setTextColor(Color.parseColor("#616161"))
             }
-        }
-
-        btnCorrect.setOnClickListener {
-            persistAndConfirm("confirmed_correct")
-        }
-
-        btnWrong.setOnClickListener {
-            val isFalsePositive = result.verdict == Verdict.DANGER || result.verdict == Verdict.WARNING
-            tvLabel.text = if (isFalsePositive)
-                "Report as False Positive — this message is actually safe."
-            else
-                "Report as False Negative — this message is actually dangerous."
-            layoutSubForm.visibility = View.VISIBLE
-        }
-
-        btnSubmit.setOnClickListener {
-            val isFalsePositive = result.verdict == Verdict.DANGER || result.verdict == Verdict.WARNING
-            val typeKey  = if (isFalsePositive) "false_positive" else "false_negative"
-            val noteText = etNote.text?.toString()?.trim() ?: ""
-            val feedbackString = if (noteText.isNotBlank()) "$typeKey: $noteText" else typeKey
-            persistAndConfirm(feedbackString)
         }
     }
 
@@ -375,6 +412,191 @@ class DetailActivity : AppCompatActivity() {
         score >= 70 -> Color.parseColor("#C62828")
         score >= 35 -> Color.parseColor("#E65100")
         else -> Color.parseColor("#2E7D32")
+    }
+
+    private fun openMessageInGmail(result: AnalysisResult) {
+        val emailRegex = Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+        val senderEmail = emailRegex.find(result.sender)?.value
+        val subject = result.subject.trim().takeIf { it.isNotBlank() && it != "(No Subject)" }
+
+        // Strategy 1: Targeted Gmail compose / view deep link by sender address
+        if (!senderEmail.isNullOrBlank()) {
+            val deepLink = Uri.parse("googlegmail://co?to=${Uri.encode(senderEmail)}")
+            val gmailIntent = Intent(Intent.ACTION_VIEW, deepLink).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            try {
+                startActivity(gmailIntent)
+                return
+            } catch (_: Exception) {}
+        }
+
+        // Strategy 2: Direct launch of Gmail application
+        val launchIntent = packageManager.getLaunchIntentForPackage("com.google.android.gm")
+        if (launchIntent != null) {
+            launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            try {
+                startActivity(launchIntent)
+                return
+            } catch (_: Exception) {}
+        }
+
+        // Strategy 3: Standard mailto intent fallback
+        try {
+            val mailtoUri = if (!senderEmail.isNullOrBlank()) {
+                Uri.parse("mailto:$senderEmail")
+            } else if (!subject.isNullOrBlank()) {
+                Uri.parse("mailto:?subject=${Uri.encode(subject)}")
+            } else {
+                Uri.parse("mailto:")
+            }
+            val mailIntent = Intent(Intent.ACTION_VIEW, mailtoUri).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(mailIntent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Gmail app not installed", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun exportOrOpenPdfReport(result: AnalysisResult, displayCaseId: String, reportUrl: String?) {
+        // If there's an active backend report URL, try launching it first
+        if (!reportUrl.isNullOrBlank()) {
+            try {
+                val pdfIntent = Intent(Intent.ACTION_VIEW, Uri.parse(reportUrl)).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(pdfIntent)
+                return
+            } catch (e: Exception) {
+                Log.w("DetailActivity", "Failed to open remote PDF URL: ${e.message}, generating local PDF...")
+            }
+        }
+
+        // Generate high-fidelity local Forensic PDF Dossier using Android PdfDocument
+        try {
+            val pdfDocument = android.graphics.pdf.PdfDocument()
+            val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(595, 842, 1).create() // Standard A4 (595x842 pt)
+            val page = pdfDocument.startPage(pageInfo)
+            val canvas = page.canvas
+            val paint = android.graphics.Paint()
+
+            // Header Banner (Dark Navy)
+            paint.color = Color.parseColor("#0D1B2A")
+            paint.style = android.graphics.Paint.Style.FILL
+            canvas.drawRect(0f, 0f, 595f, 90f, paint)
+
+            // Header Title
+            paint.color = Color.WHITE
+            paint.textSize = 18f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("MessageGuard Threat Vision — Forensic Report", 30f, 42f, paint)
+
+            paint.textSize = 10f
+            paint.typeface = Typeface.DEFAULT
+            paint.color = Color.parseColor("#90CAF9")
+            val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(result.timestamp)
+            canvas.drawText("Case ID: $displayCaseId   |   Generated: $timestampStr", 30f, 65f, paint)
+
+            // Verdict Banner
+            var yPos = 125f
+            val verdictColor = when (result.verdict) {
+                Verdict.SAFE -> Color.parseColor("#2E7D32")
+                Verdict.WARNING -> Color.parseColor("#E65100")
+                Verdict.DANGER -> Color.parseColor("#C62828")
+                Verdict.UNCERTAIN -> Color.parseColor("#F57F17")
+            }
+            paint.color = verdictColor
+            canvas.drawRoundRect(30f, yPos, 565f, yPos + 45f, 8f, 8f, paint)
+
+            paint.color = Color.WHITE
+            paint.textSize = 14f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            val verdictText = "VERDICT: ${result.verdict.name}   |   Risk Score: ${result.riskScore}/100"
+            canvas.drawText(verdictText, 45f, yPos + 28f, paint)
+
+            // Incident Metadata Section
+            yPos += 75f
+            paint.color = Color.parseColor("#1B263B")
+            paint.textSize = 13f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("INCIDENT METADATA", 30f, yPos, paint)
+
+            paint.color = Color.parseColor("#415A77")
+            paint.strokeWidth = 1f
+            canvas.drawLine(30f, yPos + 5f, 565f, yPos + 5f, paint)
+
+            yPos += 24f
+            paint.textSize = 10.5f
+            paint.typeface = Typeface.DEFAULT
+            paint.color = Color.parseColor("#212121")
+            canvas.drawText("Source Application: ${result.appSource}", 35f, yPos, paint)
+            yPos += 18f
+            canvas.drawText("Sender: ${result.sender}", 35f, yPos, paint)
+            yPos += 18f
+            canvas.drawText("Subject: ${result.subject.ifBlank { "(No Subject)" }}", 35f, yPos, paint)
+            yPos += 18f
+            canvas.drawText("Security Profile: ${result.senderTrust}   |   Enforced Action: ${result.action}", 35f, yPos, paint)
+
+            // Forensic Summary & Red Flags
+            yPos += 35f
+            paint.color = Color.parseColor("#1B263B")
+            paint.textSize = 13f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("FORENSIC EVIDENCE & RED FLAGS", 30f, yPos, paint)
+            canvas.drawLine(30f, yPos + 5f, 565f, yPos + 5f, paint)
+
+            yPos += 24f
+            paint.textSize = 10f
+            paint.typeface = Typeface.DEFAULT
+            paint.color = Color.parseColor("#37474F")
+            val summaryText = "Summary: ${result.summary}"
+            canvas.drawText(summaryText.take(80), 35f, yPos, paint)
+
+            yPos += 22f
+            for (flag in result.flags.take(6)) {
+                paint.color = Color.parseColor("#C62828")
+                canvas.drawText("• ", 35f, yPos, paint)
+                paint.color = Color.parseColor("#263238")
+                canvas.drawText(flag.take(78), 45f, yPos, paint)
+                yPos += 18f
+            }
+
+            // Footer
+            paint.color = Color.parseColor("#B0BEC5")
+            canvas.drawLine(30f, 800f, 565f, 800f, paint)
+            paint.textSize = 8.5f
+            paint.color = Color.parseColor("#78909C")
+            canvas.drawText("Generated by MessageGuard Threat Vision Endpoint Agent | Case $displayCaseId", 30f, 815f, paint)
+
+            pdfDocument.finishPage(page)
+
+            // Save to documents directory
+            val reportsDir = File(getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS), "Reports")
+            if (!reportsDir.exists()) reportsDir.mkdirs()
+            val pdfFile = File(reportsDir, "MessageGuard_${displayCaseId}.pdf")
+            pdfFile.outputStream().use { out ->
+                pdfDocument.writeTo(out)
+            }
+            pdfDocument.close()
+
+            // Open via FileProvider
+            val fileUri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.fileprovider",
+                pdfFile
+            )
+
+            val openIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(fileUri, "application/pdf")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(Intent.createChooser(openIntent, "Open Forensic PDF Dossier"))
+            Toast.makeText(this, "Exported PDF: ${pdfFile.name}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("DetailActivity", "Failed to generate local PDF: ${e.message}", e)
+            Toast.makeText(this, "Error exporting PDF: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {

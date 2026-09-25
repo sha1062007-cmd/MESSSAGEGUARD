@@ -51,6 +51,8 @@ TRUSTED_MTA_KEYWORDS = [
 class ThreatIntelService:
     """Network-layer threat intelligence and forensic relay-chain reconstruction."""
 
+    GEO_DISCLAIMER = GEO_DISCLAIMER
+
     @staticmethod
     def classify_ip(ip_str: str) -> str:
         """
@@ -106,7 +108,8 @@ class ThreatIntelService:
         ips = []
         ip_pattern = re.compile(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b")
 
-        for header in received_headers:
+        # Walk from bottom up (earliest to latest)
+        for header in reversed(received_headers):
             header_str = str(header)
             found = ip_pattern.findall(header_str)
             for ip in found:
@@ -194,23 +197,30 @@ class ThreatIntelService:
             })
 
         # Identify earliest reliable observed hop
-        # Walk forwards; select the earliest hop that is TRUSTED_RELAY or valid PUBLIC OBSERVED
+        # Walk forwards; select the earliest public hop that is valid
         earliest_reliable_ip = None
         earliest_hop_idx = None
+        all_internal = True
 
         for hop in parsed_hops:
-            if hop["trust_label"] in ("TRUSTED_RELAY", "OBSERVED"):
-                if hop["ip"] and hop["ip_classification"] == "PUBLIC":
+            if hop["ip"] and hop["ip_classification"] == "PUBLIC":
+                all_internal = False
+                if hop["trust_label"] in ("TRUSTED_RELAY", "OBSERVED", "POSSIBLY_FORGED"):
                     earliest_reliable_ip = hop["ip"]
                     earliest_hop_idx = hop["hop_index"]
                     break
-
-        origin_not_determinable = earliest_reliable_ip is None
-        reason = (
-            f"Earliest reliable observed relay identified at hop {earliest_hop_idx}."
-            if not origin_not_determinable
-            else "No verifiable public IP hop found before breaks or external unverified headers in relay chain."
-        )
+        
+        # Check if there were hops but they were all non-public (internal network)
+        if all_internal and parsed_hops:
+            origin_not_determinable = True
+            reason = "No external relay detected \u2014 email originated within a private network"
+        else:
+            origin_not_determinable = earliest_reliable_ip is None
+            reason = (
+                f"Earliest reliable observed relay identified at hop {earliest_hop_idx}."
+                if not origin_not_determinable
+                else "No verifiable public IP hop found before breaks or external unverified headers in relay chain."
+            )
 
         return {
             "relay_chain": parsed_hops,

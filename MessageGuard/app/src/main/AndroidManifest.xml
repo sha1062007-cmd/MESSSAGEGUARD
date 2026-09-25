@@ -146,7 +146,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- PS106 Email Security: Gmail/Outlook/Yahoo/Samsung/ProtonMail Notification Interceptor -->
+        <!-- MessageGuard Email Security: Gmail/Outlook/Yahoo/Samsung/ProtonMail Notification Interceptor -->
         <service
             android:name=".gmail.GmailNotificationListenerService"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
@@ -166,12 +166,22 @@
             </intent-filter>
         </service>
 
-        <!-- Phase 3: Pre-Execution Scanning Service (survives SandboxScanActivity lifecycle) -->
+        <!-- Pre-Execution Scanning Service (survives SandboxScanActivity lifecycle) -->
         <service
             android:name=".sandbox.service.SandboxScanService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
+        <!-- FileProvider for exporting and viewing Forensic PDF Reports -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

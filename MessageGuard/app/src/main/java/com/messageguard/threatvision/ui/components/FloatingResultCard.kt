@@ -193,10 +193,87 @@ object FloatingResultCard {
         val btnViewFullCase = cardView.findViewById<TextView>(R.id.btn_view_full_case)
         btnViewFullCase?.setOnClickListener {
             dismiss(context)
-            val intent = Intent(context, com.messageguard.MainActivity::class.java).apply {
+            val intent = Intent(context, com.messageguard.DetailActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (!assessment.backendCaseId.isNullOrBlank()) {
+                    if (!assessment.backendAnalysisJson.isNullOrBlank()) {
+                        putExtra("analysis_json", assessment.backendAnalysisJson)
+                        putExtra("email_sender", assessment.senderEmail ?: "")
+                    }
+                    putExtra("backend_case_id", assessment.backendCaseId)
+                } else {
+                    // Circle-to-Scan local result: convert RiskAssessment into AnalysisResult
+                    // so DetailActivity opens the EXACT scan rather than a generic screen
+                    val appVerdict = when (assessment.verdict) {
+                        ThreatVerdict.SAFE -> com.messageguard.Verdict.SAFE
+                        ThreatVerdict.WARNING -> com.messageguard.Verdict.WARNING
+                        ThreatVerdict.DANGER -> com.messageguard.Verdict.DANGER
+                        else -> com.messageguard.Verdict.UNCERTAIN
+                    }
+                    val flagsList = mutableListOf<String>()
+                    if (assessment.reason.isNotBlank()) flagsList.add(assessment.reason)
+                    flagsList.addAll(assessment.recommendations)
+                    if (assessment.correlationSummary != null) flagsList.add("Correlation: ${assessment.correlationSummary}")
+                    if (assessment.campaignSummary != null) flagsList.add("Campaign: ${assessment.campaignSummary}")
+
+                    val scanResult = com.messageguard.AnalysisResult(
+                        id = 0L,
+                        appSource = "Circle-to-Scan",
+                        sender = assessment.senderEmail ?: "Visual Screen Capture",
+                        subject = assessment.category.name,
+                        messageSnippet = assessment.reason,
+                        mlScore = assessment.riskScore,
+                        aiScore = if (assessment.riskScore > 50) assessment.riskScore else -1,
+                        riskScore = assessment.riskScore,
+                        verdict = appVerdict,
+                        summary = assessment.reason,
+                        action = if (appVerdict == com.messageguard.Verdict.DANGER) "Quarantine / Delete" else if (appVerdict == com.messageguard.Verdict.WARNING) "Flagged / Warn User" else "Allowed",
+                        senderTrust = if (appVerdict == com.messageguard.Verdict.SAFE) "High Trust" else "Untrusted",
+                        timestamp = System.currentTimeMillis(),
+                        flags = flagsList
+                    )
+                    putExtra("analysis_result", scanResult)
+                    putExtra("backend_case_id", "SCAN-${System.currentTimeMillis().toString().takeLast(6)}")
+                }
             }
             context.startActivity(intent)
+        }
+
+        // "Open in Gmail" — visible only when a sender email is available (backend Gmail path)
+        val btnOpenInGmail = cardView.findViewById<TextView>(R.id.btn_open_in_gmail)
+        if (!assessment.senderEmail.isNullOrBlank()) {
+            btnOpenInGmail?.visibility = View.VISIBLE
+            btnOpenInGmail?.setOnClickListener {
+                dismiss(context)
+                // Deep-link to Gmail search filtered by sender address
+                val gmailSearchUri = android.net.Uri.parse(
+                    "googlegmail://co?to=${android.net.Uri.encode(assessment.senderEmail)}"
+                )
+                val gmailSearchIntent = Intent(Intent.ACTION_VIEW, gmailSearchUri).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                // Try Gmail deep-link first; if Gmail is not installed fall back to generic mail search
+                try {
+                    context.startActivity(gmailSearchIntent)
+                } catch (e: android.content.ActivityNotFoundException) {
+                    // Fallback: open Gmail inbox via package name
+                    val fallbackIntent = context.packageManager.getLaunchIntentForPackage("com.google.android.gm")?.apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    if (fallbackIntent != null) {
+                        context.startActivity(fallbackIntent)
+                    } else {
+                        // Last resort: open Play Store Gmail page
+                        val playIntent = Intent(Intent.ACTION_VIEW,
+                            android.net.Uri.parse("market://details?id=com.google.android.gm")).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        try { context.startActivity(playIntent) } catch (_: Exception) {}
+                    }
+                }
+            }
+        } else {
+            btnOpenInGmail?.visibility = View.GONE
         }
 
         // Populate Bixby-Style Expandable Report Components with Staggered Entrance
@@ -291,6 +368,7 @@ object FloatingResultCard {
             assessment.verdict == ThreatVerdict.SAFE -> {
                 container.setBackgroundResource(R.drawable.bg_overlay_safe)
                 tvVerdict.setTextColor(context.getColor(R.color.safe_green))
+                tvCategory.setTextColor(context.getColor(R.color.safe_green))
             }
             assessment.verdict == ThreatVerdict.WARNING -> {
                 container.setBackgroundResource(R.drawable.bg_overlay_warning)

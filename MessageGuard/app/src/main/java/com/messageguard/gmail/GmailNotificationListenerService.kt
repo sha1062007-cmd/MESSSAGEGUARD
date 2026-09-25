@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit
 class GmailNotificationListenerService : NotificationListenerService() {
 
     companion object {
-        private const val TAG = "PS106EmailGuard"
+        private const val TAG = "MessageGuardEmail"
 
         // Monitored email client packages
         private const val PKG_GMAIL        = "com.google.android.gm"
@@ -191,7 +191,8 @@ class GmailNotificationListenerService : NotificationListenerService() {
      */
     private fun analyzeWithBackend(sender: String, subject: String, snippet: String): JSONObject {
         val prefs = getSharedPreferences("messageguard_prefs", Context.MODE_PRIVATE)
-        val backendUrl = prefs.getString("backend_url", DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
+        val customUrl = prefs.getString("backend_url", null)
+        val candidateUrls = listOfNotNull(customUrl, "http://127.0.0.1:8000", "http://10.0.2.2:8000").distinct()
 
         val payload = JSONObject().apply {
             put("sender", sender)
@@ -199,22 +200,30 @@ class GmailNotificationListenerService : NotificationListenerService() {
             put("snippet", snippet)
         }
 
-        val request = Request.Builder()
-            .url("$backendUrl/api/analyze-trigger")
-            .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .build()
+        var lastException: Exception? = null
+        for (backendUrl in candidateUrls) {
+            try {
+                val request = Request.Builder()
+                    .url("$backendUrl/api/analyze-trigger")
+                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
 
-        Log.d(TAG, "Sending analysis request to $backendUrl/api/analyze-trigger")
+                Log.d(TAG, "Attempting analysis request to $backendUrl/api/analyze-trigger")
+                val response = httpClient.newCall(request).execute()
+                val responseBody = response.body?.string() ?: "{}"
 
-        val response = httpClient.newCall(request).execute()
-        val responseBody = response.body?.string() ?: "{}"
-
-        if (!response.isSuccessful) {
-            throw RuntimeException("Backend returned ${response.code}: $responseBody")
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Backend response from $backendUrl: ${responseBody.take(200)}")
+                    return JSONObject(responseBody)
+                } else {
+                    Log.w(TAG, "Backend $backendUrl returned status ${response.code}")
+                }
+            } catch (e: Exception) {
+                lastException = e
+                Log.w(TAG, "Backend candidate $backendUrl failed: ${e.message}")
+            }
         }
-
-        Log.d(TAG, "Backend response: ${responseBody.take(200)}")
-        return JSONObject(responseBody)
+        throw lastException ?: RuntimeException("All backend connection attempts failed")
     }
 
     /**
@@ -233,9 +242,9 @@ class GmailNotificationListenerService : NotificationListenerService() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notification = NotificationCompat.Builder(this, CHANNEL_SCANNING)
             .setSmallIcon(R.drawable.ic_shield)
-            .setContentTitle("🛡️ Threat Vision: Analyzing $appName")
+            .setContentTitle("🛡️ MessageGuard: Analyzing $appName")
             .setContentText("Scanning email from $sender...")
-            .setSubText("PS106 Email Security")
+            .setSubText("Email Security")
             .setOngoing(true)
             .setProgress(0, 0, true)  // Indeterminate progress bar
             .setColor(Color.parseColor("#1a237e"))
@@ -287,13 +296,27 @@ class GmailNotificationListenerService : NotificationListenerService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // "Open in Gmail" action — deep-link to Gmail filtered by sender
+        val gmailUri = android.net.Uri.parse("googlegmail://co?to=${android.net.Uri.encode(sender)}")
+        val gmailIntent = Intent(Intent.ACTION_VIEW, gmailUri).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        val hasGmail = try {
+            packageManager.getLaunchIntentForPackage("com.google.android.gm") != null
+        } catch (_: Exception) { false }
+        val gmailPendingIntent = PendingIntent.getActivity(
+            this, notificationId + 1000,
+            if (hasGmail) gmailIntent else (packageManager.getLaunchIntentForPackage("com.google.android.gm") ?: gmailIntent),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val notification = NotificationCompat.Builder(this, CHANNEL_VERDICT)
             .setSmallIcon(R.drawable.ic_shield)
             .setContentTitle("$emoji $bandLabel — Risk: $riskScore/100")
             .setContentText("From: $sender")
-            .setSubText("PS106 Threat Vision")
+            .setSubText("MessageGuard Email Security")
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .bigText("$summary\n\nFrom: $sender\nSubject: $subject\nCase: $caseId")
@@ -303,13 +326,18 @@ class GmailNotificationListenerService : NotificationListenerService() {
             .setColorized(true)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .addAction(
+                android.R.drawable.ic_dialog_email,
+                "Open in Gmail",
+                gmailPendingIntent
+            )
             .setPriority(
                 if (verdict == "MALICIOUS" || verdict == "SUSPICIOUS")
                     NotificationCompat.PRIORITY_HIGH
                 else NotificationCompat.PRIORITY_DEFAULT
             )
             .setCategory(NotificationCompat.CATEGORY_EMAIL)
-            .setGroup("ps106_email_verdicts")
+            .setGroup("mg_email_verdicts")
             .build()
 
         nm.notify(notificationId, notification)

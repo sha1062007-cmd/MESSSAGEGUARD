@@ -133,12 +133,10 @@ class MediaProjectionService : Service() {
                 ensureVirtualDisplayCreated()
                 onReadyListener?.invoke()
 
-                // Launch the drawing canvas now that projection is confirmed ready.
-                // Previously CapturePermissionActivity started this simultaneously,
-                // causing a race where isSessionActive was still false.
-                Log.d(TAG, "Starting OverlaySelectionService (projection confirmed ready).")
-                val overlayIntent = Intent(this, OverlaySelectionService::class.java)
-                startService(overlayIntent)
+                // Explicitly DO NOT auto-launch selection overlay when a projection
+                // session becomes active. Screen sharing is a persistent capability only;
+                // the user must tap the floating bubble to start a Circle-to-Scan.
+                Log.d(TAG, "Projection session is ready. Waiting for explicit user gesture before starting selection overlay.")
             } else {
                 Log.d(TAG, "MediaProjectionService.onStartCommand: projection already active, ignoring duplicate init.")
             }

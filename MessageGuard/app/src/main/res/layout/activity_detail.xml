@@ -11,7 +11,64 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- 1. Verdict & Overall Risk Card -->
+        <!-- 1. Case Identifier & Classification Banner Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_case_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+
+                    <TextView
+                        android:id="@+id/tv_detail_case_id"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Case ID: LOCAL-SCAN"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace"
+                        android:textStyle="bold"
+                        android:textColor="#1A73E8"/>
+
+                    <TextView
+                        android:id="@+id/tv_detail_category"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PHISHING"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="2dp"
+                        android:background="#FFEBEE"
+                        android:textColor="#C62828"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_detail_timestamp_header"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Forensic Ingestion Timestamp"
+                    android:textSize="11sp"
+                    android:textColor="#757575"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 2. Verdict & Overall Risk Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -52,7 +109,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 2. ML vs AI Score Breakdown Card -->
+        <!-- 3. ML vs AI Score Breakdown Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -142,7 +199,238 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 3. Message Body Snippet with Dynamic Highlights -->
+        <!-- 4. Email Authentication Forensics Card (SPF/DKIM/DMARC) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_authentication"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Email Authentication Forensics"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:id="@+id/tv_auth_spf"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="6dp"
+                        android:text="SPF: UNKNOWN"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="#EEEEEE"
+                        android:textColor="#616161"
+                        android:layout_marginEnd="4dp"/>
+
+                    <TextView
+                        android:id="@+id/tv_auth_dkim"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="6dp"
+                        android:text="DKIM: UNKNOWN"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="#EEEEEE"
+                        android:textColor="#616161"
+                        android:layout_marginHorizontal="2dp"/>
+
+                    <TextView
+                        android:id="@+id/tv_auth_dmarc"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="6dp"
+                        android:text="DMARC: UNKNOWN"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="#EEEEEE"
+                        android:textColor="#616161"
+                        android:layout_marginStart="4dp"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_auth_domain_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Domain Authorization: NOT EVALUATED"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#424242"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_auth_note"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Header authentication results determine sender identity authorization."
+                    android:textSize="11sp"
+                    android:textColor="#757575"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 5. Origin & GeoLocation Intelligence Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_origin_geo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Origin &amp; GeoLocation Intelligence"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp"/>
+
+                <TextView
+                    android:id="@+id/tv_geo_ip"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Earliest Relay IP: 127.0.0.1 (Local / Private)"
+                    android:textSize="13sp"
+                    android:fontFamily="monospace"
+                    android:textStyle="bold"
+                    android:textColor="#212121"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_geo_location"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Location: Private / Internal Subnet"
+                    android:textSize="12sp"
+                    android:textColor="#424242"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_geo_isp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="ISP / Autonomous System: Internal Routing"
+                    android:textSize="12sp"
+                    android:textColor="#424242"
+                    android:layout_marginBottom="6dp"/>
+
+                <TextView
+                    android:id="@+id/tv_geo_classification"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Classification: Direct Transit"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#D32F2F"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_geo_disclaimer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Disclaimer: Geolocation reflects network transit routing and does not imply physical perpetrator location."
+                    android:textSize="10sp"
+                    android:textColor="#9E9E9E"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 6. Campaign & Relationship Graph Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_graph_campaign"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Campaign &amp; Relationship Graph"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_detail_campaign_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Campaign Cluster: Standalone / Unclustered"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#1565C0"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Entity Relationship Graph:"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#616161"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_detail_graph_tree"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="3dp"
+                    android:background="#263238"
+                    android:textColor="#ECEFF1"
+                    android:padding="10dp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_detail_graph_stats"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Graph Topology: 1 Node (Self)"
+                    android:textSize="11sp"
+                    android:textColor="#757575"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 7. Message Body Snippet with Dynamic Highlights -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -247,7 +535,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 4. Forensic Context & Summary -->
+        <!-- 8. Forensic Context & Summary -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -311,11 +599,11 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 5. Metadata Details -->
+        <!-- 9. Metadata Details -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="16dp"
             app:cardCornerRadius="12dp"
             app:cardElevation="2dp"
             app:strokeWidth="0dp">
@@ -359,175 +647,27 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-
-
-        <!-- 6. Feedback / Human-in-the-Loop Review Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_feedback"
+        <!-- 10. Forensic PDF Dossier Download Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_open_pdf_report"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            app:strokeWidth="0dp">
+            android:text="Export Forensic PDF Dossier"
+            app:icon="@android:drawable/ic_menu_save"
+            app:backgroundTint="#00897B"
+            android:layout_marginBottom="12dp"/>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+        <!-- 11. Open in Gmail Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_open_in_gmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open in Gmail"
+            app:icon="@android:drawable/ic_dialog_email"
+            app:backgroundTint="#1A73E8"
+            android:layout_marginBottom="12dp"/>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Was this verdict correct?"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="#212121"
-                    android:layout_marginBottom="12dp"/>
-
-                <!-- STATE A: active feedback form -->
-                <LinearLayout
-                    android:id="@+id/layout_feedback_active"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="visible">
-
-                    <!-- Toggle row: Correct / Wrong -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="12dp">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_feedback_correct"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="8dp"
-                            android:text="✓  Correct"
-                            android:textSize="12sp"
-                            android:textColor="#2E7D32"
-                            app:backgroundTint="#1A2E7D32"
-                            app:strokeColor="#222E7D32"
-                            app:strokeWidth="1dp"
-                            app:cornerRadius="8dp"
-                            android:stateListAnimator="@null"/>
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_feedback_wrong"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_weight="1"
-                            android:text="✗  Wrong"
-                            android:textSize="12sp"
-                            android:textColor="#C62828"
-                            app:backgroundTint="#1AC62828"
-                            app:strokeColor="#22C62828"
-                            app:strokeWidth="1dp"
-                            app:cornerRadius="8dp"
-                            android:stateListAnimator="@null"/>
-                    </LinearLayout>
-
-                    <!-- Sub-form: shown only after tapping Wrong -->
-                    <LinearLayout
-                        android:id="@+id/layout_false_report"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:id="@+id/tv_false_report_label"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textSize="12sp"
-                            android:textColor="#C62828"
-                            android:layout_marginBottom="8dp"/>
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="What tipped you off? (optional)"
-                            android:layout_marginBottom="10dp"
-                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/et_feedback_note"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="textCapSentences"
-                                android:maxLines="2"/>
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_submit_feedback"
-                            android:layout_width="match_parent"
-                            android:layout_height="40dp"
-                            android:text="SUBMIT REPORT"
-                            android:textSize="12sp"
-                            android:textColor="#E65100"
-                            app:backgroundTint="#1AE65100"
-                            app:strokeColor="#22E65100"
-                            app:strokeWidth="1dp"
-                            app:cornerRadius="8dp"
-                            android:stateListAnimator="@null"/>
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- STATE B: confirmation chip (collapsed, tappable to expand) -->
-                <TextView
-                    android:id="@+id/tv_feedback_confirmed"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Feedback recorded ✓  (tap to view)"
-                    android:textSize="12sp"
-                    android:textColor="#2E7D32"
-                    android:background="#1A2E7D32"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="6dp"
-                    android:visibility="gone"/>
-
-                <!-- STATE C: read-only submitted feedback view -->
-                <LinearLayout
-                    android:id="@+id/layout_feedback_readonly"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:id="@+id/tv_readonly_type"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textSize="12sp"
-                        android:textColor="#424242"
-                        android:layout_marginBottom="4dp"/>
-
-                    <TextView
-                        android:id="@+id/tv_readonly_note"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textSize="11sp"
-                        android:textStyle="italic"
-                        android:textColor="#616161"
-                        android:visibility="gone"/>
-
-                    <TextView
-                        android:id="@+id/tv_collapse_hint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(tap to collapse)"
-                        android:textSize="10sp"
-                        android:textColor="#757575"
-                        android:layout_marginTop="6dp"/>
-                </LinearLayout>
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
+        <!-- 12. Delete Forensic Case Record -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_delete_detail"
             android:layout_width="match_parent"
@@ -538,4 +678,3 @@
 
     </LinearLayout>
 </ScrollView>
-
