@@ -121,7 +121,7 @@ class ThreatIntelService:
         logger.info(f"Extracted {len(ips)} public routable relay IPs: {ips}")
         return ips
 
-    def build_relay_chain(self, raw_received_headers: List[str]) -> Dict[str, Any]:
+    def build_relay_chain(self, raw_received_headers: List[str], aux_headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Reconstruct the chronological transmission path from RFC 822 Received headers.
 
@@ -132,14 +132,42 @@ class ThreatIntelService:
           OBSERVED | TRUSTED_RELAY | SUSPICIOUS_RELAY | POSSIBLY_FORGED | UNKNOWN
 
         Identifies 'earliest_reliable_observed_ip' or flags 'origin_not_determinable'.
+        Cross-checks Authentication-Results and X-Originating-IP when present.
         """
         if not raw_received_headers:
+            # Check aux headers if Received headers are absent
+            aux_ip = None
+            aux_source = None
+            if aux_headers:
+                for k in ["x-originating-ip", "x-sender-ip"]:
+                    val = aux_headers.get(k) or aux_headers.get(k.lower())
+                    if val:
+                        cand = val.strip("[] \t\r\n")
+                        if self.classify_ip(cand) == "PUBLIC":
+                            aux_ip = cand
+                            aux_source = k
+                            break
+
+            if aux_ip:
+                return {
+                    "relay_chain": [],
+                    "hop_count": 0,
+                    "total_hops": 0,
+                    "earliest_reliable_observed_ip": aux_ip,
+                    "origin_not_determinable": False,
+                    "selection_reason": f"Identified from {aux_source} header (Received headers absent).",
+                    "reason": f"Identified from {aux_source} header.",
+                    "disclaimer": GEO_DISCLAIMER,
+                }
+
             return {
                 "relay_chain": [],
                 "earliest_reliable_observed_ip": None,
                 "origin_not_determinable": True,
+                "selection_reason": "No Received headers present in email metadata.",
                 "reason": "No Received headers present in email metadata.",
                 "total_hops": 0,
+                "disclaimer": GEO_DISCLAIMER,
             }
 
         parsed_hops = []
@@ -204,29 +232,53 @@ class ThreatIntelService:
             })
 
         # Identify earliest reliable observed hop
-        # Walk forwards; select the earliest public hop that is valid
+        # Walk forwards (earliest hop first); select the first non-private/public hop
         earliest_reliable_ip = None
         earliest_hop_idx = None
+        selection_reason = ""
         all_internal = True
 
         for hop in parsed_hops:
             if hop["ip"] and hop["ip_classification"] == "PUBLIC":
                 all_internal = False
-                if hop["trust_label"] in ("TRUSTED_RELAY", "OBSERVED", "POSSIBLY_FORGED"):
-                    earliest_reliable_ip = hop["ip"]
-                    earliest_hop_idx = hop["hop_index"]
-                    break
-        
+                earliest_reliable_ip = hop["ip"]
+                earliest_hop_idx = hop["hop_index"]
+                selection_reason = f"Hop {earliest_hop_idx} was the earliest publicly routable IP in the transmission path."
+                break
+
+        # If not found in Received chain, cross-check aux headers (Authentication-Results, X-Originating-IP)
+        if not earliest_reliable_ip and aux_headers:
+            for k in ["x-originating-ip", "x-sender-ip"]:
+                val = aux_headers.get(k) or aux_headers.get(k.lower())
+                if val:
+                    cand = val.strip("[] \t\r\n")
+                    if self.classify_ip(cand) == "PUBLIC":
+                        earliest_reliable_ip = cand
+                        all_internal = False
+                        selection_reason = f"Cross-checked from authenticated {k} header."
+                        break
+
+            if not earliest_reliable_ip:
+                auth_res = aux_headers.get("authentication-results") or ""
+                auth_ip_match = re.search(r"sender\s+IP\s+is\s+([0-9a-fA-F.:]+)", auth_res, re.IGNORECASE)
+                if auth_ip_match:
+                    cand = auth_ip_match.group(1).strip()
+                    if self.classify_ip(cand) == "PUBLIC":
+                        earliest_reliable_ip = cand
+                        all_internal = False
+                        selection_reason = "Extracted from SPF sender IP evaluation in Authentication-Results."
+
         # Check if there were hops but they were all non-public (internal network)
         if all_internal and parsed_hops:
             origin_not_determinable = True
-            reason = "No external relay detected \u2014 email originated within a private network"
+            reason = "No external relay detected — email originated within a private or local network"
+            selection_reason = "All observed hops represent private, loopback, or non-routable addresses."
         else:
             origin_not_determinable = earliest_reliable_ip is None
             reason = (
                 f"Earliest reliable observed relay identified at hop {earliest_hop_idx}."
-                if not origin_not_determinable
-                else "No verifiable public IP hop found before breaks or external unverified headers in relay chain."
+                if earliest_hop_idx
+                else selection_reason or "No verifiable public IP hop found before breaks or external unverified headers in relay chain."
             )
 
         return {
@@ -235,6 +287,7 @@ class ThreatIntelService:
             "total_hops": len(parsed_hops),
             "earliest_reliable_observed_ip": earliest_reliable_ip or "ORIGIN_NOT_DETERMINABLE",
             "origin_not_determinable": origin_not_determinable,
+            "selection_reason": selection_reason,
             "reason": reason,
             "disclaimer": GEO_DISCLAIMER,
         }

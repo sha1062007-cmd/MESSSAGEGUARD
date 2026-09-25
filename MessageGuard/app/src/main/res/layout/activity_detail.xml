@@ -86,6 +86,46 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Top-Level Verdict Banner (Safe / Warning / Malicious) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_top_verdict_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="3dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:id="@+id/layout_top_verdict_banner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:background="#2E7D32">
+
+                <TextView
+                    android:id="@+id/tv_top_verdict_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SAFE — ALL CHECKS PASSED"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:letterSpacing="0.05"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_top_verdict_reason"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Email headers verified authentic (SPF/DKIM/DMARC pass) and no malicious content signals detected."
+                    android:textSize="12sp"
+                    android:textColor="#E8F5E9"
+                    android:lineSpacingExtra="2dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 2. Verdict & Overall Risk Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -381,6 +421,16 @@
                     android:textSize="11sp"
                     android:fontFamily="monospace"
                     android:textColor="#546E7A"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_geo_selection_reason"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Selection Rationale: Chronological origin hop evaluated"
+                    android:textSize="11sp"
+                    android:textColor="#37474F"
+                    android:textStyle="italic"
                     android:layout_marginBottom="10dp"/>
 
                 <!-- Interactive Map Visualization Card / Frame -->

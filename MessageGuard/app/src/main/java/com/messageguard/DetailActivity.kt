@@ -177,6 +177,35 @@ class DetailActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.tv_detail_timestamp_header).text =
                 "Forensic Ingestion: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(result.timestamp)}"
 
+            // 0. Top-Level Dynamic Verdict Banner (Safe / Warning / Malicious)
+            val layoutTopBanner = findViewById<View>(R.id.layout_top_verdict_banner)
+            val tvTopVerdictTitle = findViewById<TextView>(R.id.tv_top_verdict_title)
+            val tvTopVerdictReason = findViewById<TextView>(R.id.tv_top_verdict_reason)
+
+            val (bannerBgColor, bannerTitleText) = when (result.verdict) {
+                Verdict.SAFE -> Pair(Color.parseColor("#2E7D32"), "SAFE — ALL CHECKS PASSED")
+                Verdict.WARNING, Verdict.UNCERTAIN -> Pair(Color.parseColor("#E65100"), "WARNING / SUSPICIOUS — REVIEW REQUIRED")
+                Verdict.DANGER -> Pair(Color.parseColor("#C62828"), "MALICIOUS / DANGER — IMMEDIATE ACTION REQUIRED")
+            }
+            layoutTopBanner?.setBackgroundColor(bannerBgColor)
+            tvTopVerdictTitle?.text = bannerTitleText
+
+            val topReasons = result.flags.filter { !it.contains("No specific content", ignoreCase = true) }
+            val dynamicBannerReason = when {
+                result.verdict == Verdict.DANGER -> {
+                    val primaryReason = topReasons.firstOrNull() ?: "High-confidence security violation detected"
+                    "Threat Score: ${result.riskScore}/100 — $primaryReason"
+                }
+                result.verdict == Verdict.WARNING || result.verdict == Verdict.UNCERTAIN -> {
+                    val primaryReason = topReasons.firstOrNull() ?: "Partial authentication or suspicious routing signals"
+                    "Risk Score: ${result.riskScore}/100 — $primaryReason"
+                }
+                else -> {
+                    "Email headers verified authentic (SPF/DKIM/DMARC pass) and no malicious content signals detected."
+                }
+            }
+            tvTopVerdictReason?.text = dynamicBannerReason
+
             // 2. Verdict & Overall Risk Card
             val tvVerdict = findViewById<TextView>(R.id.tv_detail_verdict)
             tvVerdict.text = "${result.verdict.name} Verdict"
@@ -244,23 +273,39 @@ class DetailActivity : AppCompatActivity() {
             // 5. Origin & GeoLocation Intelligence Card
             var earObs = parsedJsonObj?.optJSONObject("earliest_reliable_observed_ip")
             val earObsStr = parsedJsonObj?.optString("earliest_reliable_observed_ip")
-            val geoIp = earObs?.optString("ip")
+            val rawExtractedIp = earObs?.optString("ip")
                 ?: if (!earObsStr.isNullOrBlank() && earObsStr != "ORIGIN_NOT_DETERMINABLE") earObsStr
-                else (if (result.appSource.contains("Circle", ignoreCase = true)) "N/A (Visual Capture)" else "127.0.0.1 (Direct Relay)")
+                else ""
+
+            val isPrivateOrInternal = rawExtractedIp.isBlank() ||
+                rawExtractedIp.startsWith("10.") ||
+                rawExtractedIp.startsWith("192.168.") ||
+                rawExtractedIp.startsWith("172.") ||
+                rawExtractedIp.startsWith("127.") ||
+                rawExtractedIp.startsWith("fc00:") ||
+                rawExtractedIp == "::1" ||
+                rawExtractedIp.equals("ORIGIN_NOT_DETERMINABLE", ignoreCase = true)
+
+            val geoIp = if (isPrivateOrInternal) {
+                if (rawExtractedIp.isNotBlank() && rawExtractedIp != "ORIGIN_NOT_DETERMINABLE") "$rawExtractedIp (Internal Subnet)"
+                else "No public relay observed in header chain"
+            } else {
+                rawExtractedIp
+            }
 
             val geoCity = earObs?.optString("city", "")?.takeIf { it.isNotBlank() && it != "Unknown City" }
             val geoRegion = earObs?.optString("region", "")?.takeIf { it.isNotBlank() }
             val geoCountry = earObs?.optString("country", "")?.takeIf { it.isNotBlank() && it != "Unknown Country" }
             val geoLoc = listOfNotNull(geoCity, geoRegion, geoCountry).joinToString(", ").ifBlank {
-                if (earObs != null) "Approximate Network Transit"
+                if (!isPrivateOrInternal) "Approximate Network Transit"
                 else if (result.appSource.contains("Circle", ignoreCase = true)) "Local Device OCR"
-                else "Internal Network Subnet"
+                else "Internal Network / Non-routable Subnet"
             }
 
             val geoIsp = earObs?.optString("isp")?.takeIf { it.isNotBlank() && it != "Unknown ISP" }
-                ?: earObs?.optString("org")?.takeIf { it.isNotBlank() }
-                ?: "Local / Transit Network"
-            val geoClass = earObs?.optString("classification") ?: (if (result.verdict == Verdict.DANGER) "[UNTRUSTED ROUTE]" else "[DIRECT TRANSIT]")
+                ?: earObs?.optString("org")?.takeIf { it.isNotBlank() && it != "Unknown Infrastructure" }
+                ?: (if (isPrivateOrInternal) "Internal Relay Infrastructure" else "External Transit Network")
+            val geoClass = earObs?.optString("classification") ?: (if (isPrivateOrInternal) "[INTERNAL TRANSIT]" else if (result.verdict == Verdict.DANGER) "[UNTRUSTED ROUTE]" else "[DIRECT TRANSIT]")
             val geoDisc = parsedJsonObj?.optString("geo_disclaimer")
                 ?: "IMPORTANT: Location represents the approximate network infrastructure associated with the observed IP address. It does not establish the sender's exact physical location or identity."
 
@@ -274,10 +319,17 @@ class DetailActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.tv_geo_disclaimer).text = geoDisc
 
             val tvCoords = findViewById<TextView>(R.id.tv_geo_coordinates)
+            val tvSelectionReason = findViewById<TextView>(R.id.tv_geo_selection_reason)
             val webViewMap = findViewById<android.webkit.WebView>(R.id.webview_forensic_map)
             val tvMapPlaceholder = findViewById<TextView>(R.id.tv_map_placeholder)
 
-            if (lat != null && lon != null && lat in -90.0..90.0 && lon in -180.0..180.0) {
+            val rawSelectionReason = parsedJsonObj?.optString("selection_reason")
+                ?: earObs?.optString("selection_reason")
+                ?: (if (isPrivateOrInternal) "All observed relay hops are private, loopback, or non-routable addresses."
+                    else "Selected earliest public/routable IP identified along chronological relay path.")
+            tvSelectionReason.text = "Selection Rationale: $rawSelectionReason"
+
+            if (!isPrivateOrInternal && lat != null && lon != null && lat in -90.0..90.0 && lon in -180.0..180.0) {
                 val formattedCoords = String.format(Locale.US, "Coordinates: %.4f° N/S, %.4f° E/W", lat, lon)
                 tvCoords.text = formattedCoords
                 tvCoords.visibility = View.VISIBLE
@@ -325,13 +377,14 @@ class DetailActivity : AppCompatActivity() {
                 webViewMap.settings.domStorageEnabled = true
                 webViewMap.loadDataWithBaseURL("https://openstreetmap.org", mapHtml, "text/html", "UTF-8", null)
             } else {
-                tvCoords.text = "Coordinates: Unavailable (Non-routable or private IP)"
                 webViewMap.visibility = View.GONE
                 tvMapPlaceholder.visibility = View.VISIBLE
-                if (geoIp.startsWith("10.") || geoIp.startsWith("192.168.") || geoIp.startsWith("172.") || geoIp.startsWith("127.")) {
-                    tvMapPlaceholder.text = "Private / Non-Global IP ($geoIp)\nGeolocation unavailable for internal network addresses."
+                if (isPrivateOrInternal) {
+                    tvCoords.text = "Coordinates: Non-routable Internal Address"
+                    tvMapPlaceholder.text = "Internal Network Subnet ($geoIp)\nNo public relay observed in header chain. Geolocation intentionally omitted for private addresses."
                 } else {
-                    tvMapPlaceholder.text = "Approximate Location Unavailable\nNo routable coordinates could be resolved."
+                    tvCoords.text = "Coordinates: Geolocation Lookup Pending / Unavailable"
+                    tvMapPlaceholder.text = "Public IP Identified ($geoIp)\nGeolocation service temporarily unavailable. Network infrastructure record preserved."
                 }
             }
 

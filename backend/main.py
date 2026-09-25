@@ -142,6 +142,7 @@ class AnalysisResponse(BaseModel):
     forwarder: Optional[str] = None
     threatIndicators: Optional[list] = []
     earliest_reliable_observed_ip: Optional[Union[Dict[str, Any], str]] = None
+    selection_reason: Optional[str] = None
     relay_chain: Optional[list] = []
     geo_disclaimer: Optional[str] = (
         "Approximate infrastructure geolocation based on IP registry data. "
@@ -448,7 +449,10 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
 
         # Step 5: Extract relay IPs, build relay chain, and resolve GeoIP
         received_hdrs = email_data.get("received_headers", [])
-        relay_chain_data = threat_intel.build_relay_chain(received_hdrs)
+        aux_hdrs = dict(email_data.get("raw_headers", {}))
+        if email_data.get("authentication_results"):
+            aux_hdrs["authentication-results"] = email_data["authentication_results"]
+        relay_chain_data = threat_intel.build_relay_chain(received_hdrs, aux_headers=aux_hdrs)
         relay_ips = extract_ips_from_email(received_hdrs)
         resolved_ips = threat_intel.resolve_all_ips(relay_ips)
         relay_analysis = threat_intel.analyze_relay_path(resolved_ips)
@@ -473,6 +477,7 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
                     "org": matching_geo.get("org") or matching_geo.get("as_number", ""),
                     "asn": matching_geo.get("as_number", ""),
                     "classification": matching_geo.get("infrastructure_type", "PUBLIC"),
+                    "selection_reason": relay_chain_data.get("selection_reason", ""),
                     "disclaimer": threat_intel.GEO_DISCLAIMER,
                 }
             else:
@@ -483,10 +488,17 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
                     "country": "Unknown Country",
                     "org": "Unknown Infrastructure",
                     "classification": "PUBLIC",
+                    "selection_reason": relay_chain_data.get("selection_reason", ""),
                     "disclaimer": threat_intel.GEO_DISCLAIMER,
                 }
         else:
-            enriched_earliest_ip = raw_earliest_ip or "ORIGIN_NOT_DETERMINABLE"
+            enriched_earliest_ip = {
+                "ip": raw_earliest_ip or "ORIGIN_NOT_DETERMINABLE",
+                "city": "Unknown",
+                "classification": "INTERNAL_OR_UNDETERMINED",
+                "selection_reason": relay_chain_data.get("selection_reason", "No public relay observed in header chain"),
+                "disclaimer": threat_intel.GEO_DISCLAIMER,
+            }
 
         geoip_data = {
             "relay_ips": relay_ips,
@@ -565,6 +577,7 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
             forwarder=content_result.get("forwarding_analysis", {}).get("forwarded_by"),
             threatIndicators=content_result.get("risk_factors", []),
             earliest_reliable_observed_ip=enriched_earliest_ip,
+            selection_reason=relay_chain_data.get("selection_reason"),
             relay_chain=relay_chain_data.get("relay_chain", []),
             geo_disclaimer=threat_intel.GEO_DISCLAIMER,
             domain_intelligence=domain_intel_data,
