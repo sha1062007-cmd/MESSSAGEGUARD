@@ -106,11 +106,13 @@ class ThreatIntelService:
     def extract_ips_from_email(self, received_headers: List[str]) -> List[str]:
         """Extract public routable relay IP addresses from RFC 822 'Received' headers."""
         ips = []
-        ip_pattern = re.compile(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b")
+        ipv4_pattern = r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"
+        ipv6_pattern = r"(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}"
+        ip_pattern = re.compile(rf"{ipv4_pattern}|{ipv6_pattern}")
 
         # Walk from bottom up (earliest to latest)
         for header in reversed(received_headers):
-            header_str = str(header)
+            header_str = re.sub(r"[\[\]]", " ", str(header))
             found = ip_pattern.findall(header_str)
             for ip in found:
                 if self.classify_ip(ip) == "PUBLIC" and ip not in ips:
@@ -141,7 +143,10 @@ class ThreatIntelService:
             }
 
         parsed_hops = []
-        ip_pattern = re.compile(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b")
+        # Pattern captures IPv4 and standard bracketed/unbracketed IPv6
+        ipv4_pattern = r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"
+        ipv6_pattern = r"(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}"
+        ip_pattern = re.compile(rf"{ipv4_pattern}|{ipv6_pattern}")
         from_pattern = re.compile(r"from\s+([^\s;()]+)", re.IGNORECASE)
         by_pattern = re.compile(r"by\s+([^\s;()]+)", re.IGNORECASE)
 
@@ -150,7 +155,9 @@ class ThreatIntelService:
 
         for idx, header in enumerate(reversed_headers):
             header_str = str(header).strip()
-            found_ips = ip_pattern.findall(header_str)
+            # Clean brackets for ipv6
+            clean_hdr = re.sub(r"[\[\]]", " ", header_str)
+            found_ips = ip_pattern.findall(clean_hdr)
             extracted_ip = None
             for cand in found_ips:
                 if self.classify_ip(cand) == "PUBLIC":

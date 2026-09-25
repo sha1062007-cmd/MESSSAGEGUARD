@@ -515,10 +515,16 @@ class ContentAnalyzer:
                     re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", domain)
                 )
 
+                scheme = parsed.scheme.lower() if parsed.scheme else ""
+                is_dangerous_scheme = scheme in ("javascript", "data", "file", "vbscript")
+                is_internal_host = domain_lower in ("localhost", "127.0.0.1", "::1", "0.0.0.0") or domain_lower.startswith(("10.", "192.168.", "169.254."))
+
                 # Risk scoring per URL
                 risk = 0
-                if ip_based:
-                    risk = 85
+                if is_dangerous_scheme:
+                    risk = 95
+                elif is_internal_host or ip_based:
+                    risk = 90
                 elif is_shortener and suspicious_tld:
                     risk = 85
                 elif is_shortener:
