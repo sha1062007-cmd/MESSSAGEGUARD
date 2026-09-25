@@ -232,63 +232,100 @@ class ThreatIntelService:
             "disclaimer": GEO_DISCLAIMER,
         }
 
+    _geoip_cache: Dict[str, Dict[str, Any]] = {}
+
     def resolve_geoip(self, ip: str) -> Optional[Dict[str, Any]]:
         """
-        Resolve a single IP to its GeoIP data using ip-api.com with mandatory disclaimer.
+        Resolve a single IP to its GeoIP data using ip-api.com with ipwho.is fallback.
+        Includes in-memory caching to respect rate limits and speed up lookups.
         """
-        ip_class = self.classify_ip(ip)
+        ip_clean = (ip or "").strip()
+        if ip_clean in self._geoip_cache:
+            return self._geoip_cache[ip_clean]
+
+        ip_class = self.classify_ip(ip_clean)
         if ip_class != "PUBLIC":
-            return {
-                "ip": ip,
+            res = {
+                "ip": ip_clean,
                 "ip_classification": ip_class,
                 "error": f"{ip_class} address — not an Internet origin",
                 "disclaimer": GEO_DISCLAIMER,
             }
+            self._geoip_cache[ip_clean] = res
+            return res
 
+        # Primary provider: ip-api.com
         try:
             resp = requests.get(
-                f"{GEOIP_API_BASE}/{ip}",
+                f"{GEOIP_API_BASE}/{ip_clean}",
                 params={"fields": "status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query"},
-                timeout=5,
+                timeout=4,
             )
             data = resp.json()
 
             if data.get("status") == "success":
                 asn_org = f"{data.get('as', '')} {data.get('org', '')} {data.get('isp', '')}"
-                infra_type = self.detect_infrastructure_type(ip, asn_org)
-                return {
-                    "ip": ip,
+                infra_type = self.detect_infrastructure_type(ip_clean, asn_org)
+                result = {
+                    "ip": ip_clean,
                     "ip_classification": "PUBLIC",
                     "infrastructure_type": infra_type,
                     "country": data.get("country", "Unknown"),
                     "country_code": data.get("countryCode", ""),
                     "region": data.get("regionName", ""),
                     "city": data.get("city", "Unknown"),
-                    "lat": data.get("lat", 0.0),
-                    "lon": data.get("lon", 0.0),
+                    "lat": float(data.get("lat", 0.0)),
+                    "lon": float(data.get("lon", 0.0)),
                     "timezone": data.get("timezone", ""),
                     "isp": data.get("isp", "Unknown"),
                     "org": data.get("org", ""),
                     "as_number": data.get("as", ""),
                     "disclaimer": GEO_DISCLAIMER,
                 }
+                self._geoip_cache[ip_clean] = result
+                return result
             else:
-                logger.warning(f"GeoIP lookup failed for {ip}: {data.get('message', 'unknown error')}")
-                return {
-                    "ip": ip,
+                logger.warning(f"Primary GeoIP (ip-api) failed for {ip_clean}: {data.get('message')}. Trying fallback...")
+        except Exception as e:
+            logger.warning(f"Primary GeoIP (ip-api) exception for {ip_clean}: {e}. Trying fallback...")
+
+        # Fallback provider: ipwho.is (free, no strict rate limit, reliable)
+        try:
+            resp_fallback = requests.get(f"https://ipwho.is/{ip_clean}", timeout=4)
+            data_fb = resp_fallback.json()
+            if data_fb.get("success") is True:
+                connection = data_fb.get("connection", {})
+                asn_org = f"{connection.get('asn', '')} {connection.get('org', '')} {connection.get('isp', '')}"
+                infra_type = self.detect_infrastructure_type(ip_clean, asn_org)
+                result = {
+                    "ip": ip_clean,
                     "ip_classification": "PUBLIC",
-                    "error": data.get("message", "Lookup failed"),
+                    "infrastructure_type": infra_type,
+                    "country": data_fb.get("country", "Unknown"),
+                    "country_code": data_fb.get("country_code", ""),
+                    "region": data_fb.get("region", ""),
+                    "city": data_fb.get("city", "Unknown"),
+                    "lat": float(data_fb.get("latitude", 0.0)),
+                    "lon": float(data_fb.get("longitude", 0.0)),
+                    "timezone": data_fb.get("timezone", {}).get("id", ""),
+                    "isp": connection.get("isp", "Unknown"),
+                    "org": connection.get("org", ""),
+                    "as_number": f"AS{connection.get('asn', '')} {connection.get('org', '')}".strip(),
                     "disclaimer": GEO_DISCLAIMER,
                 }
+                self._geoip_cache[ip_clean] = result
+                return result
+        except Exception as fb_err:
+            logger.error(f"Fallback GeoIP (ipwho.is) failed for {ip_clean}: {fb_err}")
 
-        except requests.RequestException as e:
-            logger.error(f"GeoIP request failed for {ip}: {e}")
-            return {
-                "ip": ip,
-                "ip_classification": "PUBLIC",
-                "error": str(e),
-                "disclaimer": GEO_DISCLAIMER,
-            }
+        error_res = {
+            "ip": ip_clean,
+            "ip_classification": "PUBLIC",
+            "error": "Network intelligence lookup unavailable",
+            "disclaimer": GEO_DISCLAIMER,
+        }
+        self._geoip_cache[ip_clean] = error_res
+        return error_res
 
     def resolve_all_ips(self, ips: List[str]) -> List[Dict[str, Any]]:
         """Resolve GeoIP data for extracted public IPs (capped at 10)."""

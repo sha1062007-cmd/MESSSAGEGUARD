@@ -353,15 +353,82 @@
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:textColor="#D32F2F"
-                    android:layout_marginBottom="8dp"/>
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_geo_coordinates"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Coordinates: Lat/Lon Unavailable"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:textColor="#546E7A"
+                    android:layout_marginBottom="10dp"/>
+
+                <!-- Interactive Map Visualization Card / Frame -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_map_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:layout_marginBottom="10dp"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="1dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="#CFD8DC">
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+
+                        <WebView
+                            android:id="@+id/webview_forensic_map"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <TextView
+                            android:id="@+id/tv_map_placeholder"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:background="#ECEFF1"
+                            android:padding="16dp"
+                            android:text="🌐 Non-Global / Internal IP\nMap visualization not available for private network hops."
+                            android:textColor="#78909C"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
+                    </FrameLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Observed Relay Sequence -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Observed Relay Sequence:"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#37474F"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tv_relay_sequence"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:textSize="10sp"
+                    android:background="#F5F5F5"
+                    android:textColor="#37474F"
+                    android:padding="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="Hop 1: [Origin Unknown]" />
 
                 <TextView
                     android:id="@+id/tv_geo_disclaimer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Disclaimer: Geolocation reflects network transit routing and does not imply physical perpetrator location."
+                    android:text="IMPORTANT: Location represents the approximate network infrastructure associated with the observed IP address. It does not establish the sender's exact physical location or identity."
                     android:textSize="10sp"
-                    android:textColor="#9E9E9E"/>
+                    android:textColor="#78909C"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

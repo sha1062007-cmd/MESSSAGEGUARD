@@ -21,7 +21,7 @@ import os
 import re
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any, Union, Dict
 
 from dotenv import load_dotenv
 
@@ -138,7 +138,7 @@ class AnalysisResponse(BaseModel):
     originalSender: Optional[str] = None
     forwarder: Optional[str] = None
     threatIndicators: Optional[list] = []
-    earliest_reliable_observed_ip: Optional[str] = None
+    earliest_reliable_observed_ip: Optional[Union[Dict[str, Any], str]] = None
     relay_chain: Optional[list] = []
     geo_disclaimer: Optional[str] = (
         "Approximate infrastructure geolocation based on IP registry data. "
@@ -448,6 +448,41 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
         resolved_ips = threat_intel.resolve_all_ips(relay_ips)
         relay_analysis = threat_intel.analyze_relay_path(resolved_ips)
 
+        # Enrich earliest_reliable_observed_ip as rich dict if public IP is resolved
+        raw_earliest_ip = relay_chain_data.get("earliest_reliable_observed_ip")
+        if raw_earliest_ip and raw_earliest_ip != "ORIGIN_NOT_DETERMINABLE":
+            # Check if already in resolved_ips
+            matching_geo = next((item for item in resolved_ips if item.get("ip") == raw_earliest_ip), None)
+            if not matching_geo:
+                matching_geo = threat_intel.resolve_geoip(raw_earliest_ip)
+            if matching_geo and not matching_geo.get("error"):
+                enriched_earliest_ip = {
+                    "ip": matching_geo.get("ip", raw_earliest_ip),
+                    "city": matching_geo.get("city", "Unknown City"),
+                    "region": matching_geo.get("region", ""),
+                    "country": matching_geo.get("country", "Unknown Country"),
+                    "country_code": matching_geo.get("country_code", ""),
+                    "lat": matching_geo.get("lat"),
+                    "lon": matching_geo.get("lon"),
+                    "isp": matching_geo.get("isp", "Unknown ISP"),
+                    "org": matching_geo.get("org") or matching_geo.get("as_number", ""),
+                    "asn": matching_geo.get("as_number", ""),
+                    "classification": matching_geo.get("infrastructure_type", "PUBLIC"),
+                    "disclaimer": threat_intel.GEO_DISCLAIMER,
+                }
+            else:
+                enriched_earliest_ip = {
+                    "ip": raw_earliest_ip,
+                    "city": "Unknown City",
+                    "region": "",
+                    "country": "Unknown Country",
+                    "org": "Unknown Infrastructure",
+                    "classification": "PUBLIC",
+                    "disclaimer": threat_intel.GEO_DISCLAIMER,
+                }
+        else:
+            enriched_earliest_ip = raw_earliest_ip or "ORIGIN_NOT_DETERMINABLE"
+
         geoip_data = {
             "relay_ips": relay_ips,
             "resolved_ips": resolved_ips,
@@ -524,7 +559,7 @@ async def analyze_trigger(request: AnalyzeTriggerRequest):
             originalSender=content_result.get("forwarding_analysis", {}).get("original_sender"),
             forwarder=content_result.get("forwarding_analysis", {}).get("forwarded_by"),
             threatIndicators=content_result.get("risk_factors", []),
-            earliest_reliable_observed_ip=relay_chain_data.get("earliest_reliable_observed_ip"),
+            earliest_reliable_observed_ip=enriched_earliest_ip,
             relay_chain=relay_chain_data.get("relay_chain", []),
             geo_disclaimer=threat_intel.GEO_DISCLAIMER,
             domain_intelligence=domain_intel_data,

@@ -242,23 +242,121 @@ class DetailActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.tv_auth_note).text = authNote
 
             // 5. Origin & GeoLocation Intelligence Card
-            val earObs = parsedJsonObj?.optJSONObject("earliest_reliable_observed_ip")
-            val geoIp = earObs?.optString("ip") ?: (if (result.appSource.contains("Circle", ignoreCase = true)) "N/A (Visual Capture)" else "127.0.0.1 (Direct Relay)")
-            val geoLoc = if (earObs != null) {
-                "${earObs.optString("city", "Unknown City")}, ${earObs.optString("region", "")}, ${earObs.optString("country", "Unknown")}".trim(',', ' ')
-            } else {
-                if (result.appSource.contains("Circle", ignoreCase = true)) "Local Device OCR" else "Internal Network"
+            var earObs = parsedJsonObj?.optJSONObject("earliest_reliable_observed_ip")
+            val earObsStr = parsedJsonObj?.optString("earliest_reliable_observed_ip")
+            val geoIp = earObs?.optString("ip")
+                ?: if (!earObsStr.isNullOrBlank() && earObsStr != "ORIGIN_NOT_DETERMINABLE") earObsStr
+                else (if (result.appSource.contains("Circle", ignoreCase = true)) "N/A (Visual Capture)" else "127.0.0.1 (Direct Relay)")
+
+            val geoCity = earObs?.optString("city", "")?.takeIf { it.isNotBlank() && it != "Unknown City" }
+            val geoRegion = earObs?.optString("region", "")?.takeIf { it.isNotBlank() }
+            val geoCountry = earObs?.optString("country", "")?.takeIf { it.isNotBlank() && it != "Unknown Country" }
+            val geoLoc = listOfNotNull(geoCity, geoRegion, geoCountry).joinToString(", ").ifBlank {
+                if (earObs != null) "Approximate Network Transit"
+                else if (result.appSource.contains("Circle", ignoreCase = true)) "Local Device OCR"
+                else "Internal Network Subnet"
             }
-            val geoIsp = earObs?.optString("org") ?: "Local Network Transit"
+
+            val geoIsp = earObs?.optString("isp")?.takeIf { it.isNotBlank() && it != "Unknown ISP" }
+                ?: earObs?.optString("org")?.takeIf { it.isNotBlank() }
+                ?: "Local / Transit Network"
             val geoClass = earObs?.optString("classification") ?: (if (result.verdict == Verdict.DANGER) "[UNTRUSTED ROUTE]" else "[DIRECT TRANSIT]")
             val geoDisc = parsedJsonObj?.optString("geo_disclaimer")
-                ?: "Disclaimer: Geolocation reflects network transit routing and does not imply physical perpetrator location."
+                ?: "IMPORTANT: Location represents the approximate network infrastructure associated with the observed IP address. It does not establish the sender's exact physical location or identity."
 
-            findViewById<TextView>(R.id.tv_geo_ip).text = "Earliest Relay IP: $geoIp"
-            findViewById<TextView>(R.id.tv_geo_location).text = "Location: $geoLoc"
-            findViewById<TextView>(R.id.tv_geo_isp).text = "ISP / Autonomous System: $geoIsp"
+            val lat = earObs?.optDouble("lat")?.takeIf { !it.isNaN() && it != 0.0 }
+            val lon = earObs?.optDouble("lon")?.takeIf { !it.isNaN() && it != 0.0 }
+
+            findViewById<TextView>(R.id.tv_geo_ip).text = "Earliest Reliable Observable Public IP: $geoIp"
+            findViewById<TextView>(R.id.tv_geo_location).text = "Approximate Location: $geoLoc"
+            findViewById<TextView>(R.id.tv_geo_isp).text = "ISP / Organization: $geoIsp"
             findViewById<TextView>(R.id.tv_geo_classification).text = "Infrastructure: $geoClass"
             findViewById<TextView>(R.id.tv_geo_disclaimer).text = geoDisc
+
+            val tvCoords = findViewById<TextView>(R.id.tv_geo_coordinates)
+            val webViewMap = findViewById<android.webkit.WebView>(R.id.webview_forensic_map)
+            val tvMapPlaceholder = findViewById<TextView>(R.id.tv_map_placeholder)
+
+            if (lat != null && lon != null && lat in -90.0..90.0 && lon in -180.0..180.0) {
+                val formattedCoords = String.format(Locale.US, "Coordinates: %.4f° N/S, %.4f° E/W", lat, lon)
+                tvCoords.text = formattedCoords
+                tvCoords.visibility = View.VISIBLE
+                tvMapPlaceholder.visibility = View.GONE
+                webViewMap.visibility = View.VISIBLE
+
+                // Load interactive OpenStreetMap / Leaflet tile map
+                val sanitizedCity = (geoCity ?: "Observed Infrastructure").replace("'", "\\'")
+                val sanitizedIp = geoIp.replace("'", "\\'")
+                val mapHtml = """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                        <style>
+                            body, html { margin:0; padding:0; height:100%; width:100%; background:#ECEFF1; font-family: sans-serif; }
+                            #map { height:100%; width:100%; }
+                            .custom-popup { font-size:11px; line-height:1.4; color:#263238; }
+                            .popup-title { font-weight:bold; color:#C62828; margin-bottom:2px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div id="map"></div>
+                        <script>
+                            var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([$lat, $lon], 7);
+                            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                maxZoom: 18
+                            }).addTo(map);
+                            var circle = L.circle([$lat, $lon], {
+                                color: '#1565C0',
+                                fillColor: '#2196F3',
+                                fillOpacity: 0.25,
+                                radius: 25000
+                            }).addTo(map);
+                            var marker = L.marker([$lat, $lon]).addTo(map);
+                            marker.bindPopup("<div class='custom-popup'><div class='popup-title'>Observed Network Infrastructure</div><b>IP:</b> $sanitizedIp<br/><b>Location:</b> $sanitizedCity<br/><i>Approximate transit node</i></div>").openPopup();
+                        </script>
+                    </body>
+                    </html>
+                """.trimIndent()
+
+                webViewMap.settings.javaScriptEnabled = true
+                webViewMap.settings.domStorageEnabled = true
+                webViewMap.loadDataWithBaseURL("https://openstreetmap.org", mapHtml, "text/html", "UTF-8", null)
+            } else {
+                tvCoords.text = "Coordinates: Unavailable (Non-routable or private IP)"
+                webViewMap.visibility = View.GONE
+                tvMapPlaceholder.visibility = View.VISIBLE
+                if (geoIp.startsWith("10.") || geoIp.startsWith("192.168.") || geoIp.startsWith("172.") || geoIp.startsWith("127.")) {
+                    tvMapPlaceholder.text = "Private / Non-Global IP ($geoIp)\nGeolocation unavailable for internal network addresses."
+                } else {
+                    tvMapPlaceholder.text = "Approximate Location Unavailable\nNo routable coordinates could be resolved."
+                }
+            }
+
+            // Populate Observed Relay Sequence
+            val relayChainArr = parsedJsonObj?.optJSONArray("relay_chain")
+            val tvRelaySeq = findViewById<TextView>(R.id.tv_relay_sequence)
+            if (relayChainArr != null && relayChainArr.length() > 0) {
+                val sbRelay = StringBuilder()
+                for (i in 0 until relayChainArr.length()) {
+                    val hop = relayChainArr.getJSONObject(i)
+                    val hopIdx = hop.optInt("hop_index", i + 1)
+                    val hopIp = hop.optString("ip", "unknown")
+                    val hopTrust = hop.optString("trust_label", "OBSERVED")
+                    val hopFrom = hop.optString("from_host", "")
+                    val hopBy = hop.optString("by_host", "")
+                    sbRelay.append("Hop $hopIdx: $hopIp ($hopTrust)")
+                    if (hopFrom.isNotBlank() || hopBy.isNotBlank()) {
+                        sbRelay.append("\n       from: ${hopFrom.take(28)} by: ${hopBy.take(28)}")
+                    }
+                    if (i < relayChainArr.length() - 1) sbRelay.append("\n  ↓\n")
+                }
+                tvRelaySeq.text = sbRelay.toString()
+            } else {
+                tvRelaySeq.text = "Hop 1: $geoIp [Earliest Observable Hop]"
+            }
 
             // 6. Campaign & Relationship Graph Card
             val campObj = parsedJsonObj?.optJSONObject("campaign")
