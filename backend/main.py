@@ -91,6 +91,9 @@ content_analyzer = ContentAnalyzer()
 threat_intel = ThreatIntelService()
 report_service = ReportService()
 
+from services.email_providers import EmailEcosystemManager
+email_ecosystem = EmailEcosystemManager()
+
 
 # --------------------------------------------------------------------------- #
 #  Request/Response Models
@@ -264,6 +267,8 @@ def calculate_ps106_risk_score(
             status = check.get("status", "UNKNOWN").upper()
             if status == "FAIL":
                 auth_score += 33
+            elif status == "SOFTFAIL":
+                auth_score += 25
             elif status in ("UNKNOWN", "NONE", "TEMPERROR", "PERMERROR"):
                 auth_score += 10
     else:
@@ -666,6 +671,61 @@ async def ingest_eml_file(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f".eml ingestion failed: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Failed to parse .eml file: {str(e)}")
+
+@app.get("/api/ecosystems/status")
+async def get_email_ecosystems_status():
+    """
+    Returns live connection and configuration status of all 5 supported email ecosystems:
+    1. Gmail (Google Workspace API)
+    2. Microsoft 365 / Outlook (Microsoft Graph API)
+    3. Yahoo Mail (IMAP SSL)
+    4. Generic Corporate IMAP (RFC 3501 SSL)
+    5. Universal RFC 822 / .EML Raw File & Share Intent
+    """
+    return {
+        "status": "ok",
+        "ecosystems": email_ecosystem.get_ecosystem_status(),
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+
+class MicrosoftGraphIngestRequest(BaseModel):
+    graph_message: Dict[str, Any]
+
+
+@app.post("/api/ingest/microsoft-graph", response_model=AnalysisResponse)
+async def ingest_microsoft_graph(request: MicrosoftGraphIngestRequest):
+    """Ecosystem #2: Ingest email directly from Microsoft 365 / Graph REST message object."""
+    try:
+        norm_record = email_ecosystem.outlook.ingest_graph_json(request.graph_message)
+        payload = email_ecosystem.normalize_and_convert_to_trigger(norm_record)
+        trigger_req = AnalyzeTriggerRequest(**payload)
+        return await analyze_trigger(trigger_req)
+    except Exception as e:
+        logger.error(f"Microsoft Graph ingestion failed: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Failed to ingest Microsoft Graph message: {str(e)}")
+
+
+class ImapIngestRequest(BaseModel):
+    provider: str = "GENERIC_IMAP"  # YAHOO_IMAP or GENERIC_IMAP
+    raw_rfc822_mime: str
+
+
+@app.post("/api/ingest/imap", response_model=AnalysisResponse)
+async def ingest_imap_email(request: ImapIngestRequest):
+    """Ecosystem #3 & #4: Ingest email from Yahoo Mail or Generic Corporate IMAP mailbox."""
+    try:
+        raw_bytes = request.raw_rfc822_mime.encode("utf-8", errors="replace")
+        if request.provider.upper() == "YAHOO_IMAP":
+            norm_record = email_ecosystem.yahoo.ingest_yahoo_raw(raw_bytes)
+        else:
+            norm_record = email_ecosystem.generic_imap.ingest_imap_message(raw_bytes)
+        payload = email_ecosystem.normalize_and_convert_to_trigger(norm_record)
+        trigger_req = AnalyzeTriggerRequest(**payload)
+        return await analyze_trigger(trigger_req)
+    except Exception as e:
+        logger.error(f"IMAP message ingestion failed: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Failed to ingest IMAP email: {str(e)}")
 
 
 @app.get("/generate-report/{case_id}")

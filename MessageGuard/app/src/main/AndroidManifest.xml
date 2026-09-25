@@ -40,13 +40,13 @@
         </activity>
         <activity
             android:name=".HistoryActivity"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".SettingsActivity"
             android:exported="false" />
         <activity
             android:name=".DetailActivity"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".AlertSettingsActivity"
             android:exported="false" />
