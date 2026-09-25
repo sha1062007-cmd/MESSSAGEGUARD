@@ -283,11 +283,19 @@ def calculate_ps106_risk_score(
 
     ml_model_score = max(content_score, int(content_score * 0.85 + geoip_score * 0.15))
 
+    # Extract primary_category early for use in logging and score branching
+    primary_category = content_result.get("primary_category", "")
+
+    logger.debug(
+        f"[SCORING] content_score={content_score}, geoip_score={geoip_score}, "
+        f"ml_model_score={ml_model_score}, auth_score={auth_score}, "
+        f"has_auth_data={has_auth_data}, primary_category={primary_category!r}"
+    )
+
     # High-Risk Content Override Principle:
     # High-risk content (content_score >= 80, SENSITIVE_DATA_EXPOSURE, BEC, MALWARE) cannot be diluted
     # down to UNVERIFIED or SAFE by absence of negative headers or neutral delivery.
     # Combine principle: combine, don't dilute high-threat content.
-    primary_category = content_result.get("primary_category", "")
     if content_score >= 80 or primary_category in ("SENSITIVE_DATA_EXPOSURE", "BEC", "MALWARE"):
         # Auth can add to risk if failed, but high content threat directly drives score
         final_score = max(content_score, int(ml_model_score * 0.70 + auth_score * 0.30))
@@ -300,7 +308,9 @@ def calculate_ps106_risk_score(
 
     final_score = max(0, min(100, final_score))
 
-    # PS106 4-Band Verdict
+    logger.debug(f"[SCORING] pre-verdict final_score={final_score}")
+
+    # SIH26106 4-Band Verdict
     if final_score >= 70 or primary_category == "SENSITIVE_DATA_EXPOSURE":
         verdict = "MALICIOUS"
         risk_band = "HIGH"
@@ -319,26 +329,48 @@ def calculate_ps106_risk_score(
         risk_band = "LOW"
         risk_color = "#4CAF50"
 
-    # Override: clean text with no significant threat signals evaluates to SAFE
-    if ml_model_score < 20 and auth_score < 30:
-        verdict = "SAFE"
-        risk_band = "LOW"
-        risk_color = "#4CAF50"
-        final_score = min(final_score, 10)
-
-    # Override: when auth fully passes and content score is marginal (single minor hit), still score SAFE
-    if has_auth_data and auth_result.get("domain_authorization_status") == "DOMAIN_AUTHORIZED" and ml_model_score <= 35:
+    # Override: Truly clean content (content_score < 30) with low auth risk can be SAFE.
+    # CRITICAL: Guard uses content_score directly, NOT ml_model_score, because ml_model_score
+    # blends geo signals that may not reflect content threat level. This prevents a phishing email
+    # with high content_score from being re-classified as SAFE due to neutral geoIP.
+    if content_score < 30 and auth_score < 30:
         verdict = "SAFE"
         risk_band = "LOW"
         risk_color = "#4CAF50"
         final_score = min(final_score, 15)
+        logger.debug(f"[SCORING] Override→SAFE: content_score={content_score}<30 and auth_score={auth_score}<30")
 
-    # Force VERIFIED if auth passes AND content is truly clean
-    if has_auth_data and all(c.get("status") == "pass" for c in auth_checks) and ml_model_score <= 35:
+    # Force VERIFIED only when content is genuinely clean (content_score <= 15)
+    # and all auth headers pass. Previous threshold of ml_model_score<=35 was too permissive
+    # and could override phishing emails with legitimate-looking sender domains.
+    if (has_auth_data
+            and all(c.get("status") == "pass" for c in auth_checks)
+            and content_score <= 15):
         verdict = "VERIFIED"
         risk_band = "LOW"
         risk_color = "#4CAF50"
         final_score = min(final_score, 5)
+        logger.debug(f"[SCORING] Override→VERIFIED: auth all-pass + content_score={content_score}<=15")
+
+    # FAIL-LOUD SAFETY NET: If final verdict is SAFE/VERIFIED but content_score was >= 40,
+    # this is an aggregation inconsistency — a phishing email with high content risk should
+    # NEVER silently resolve to SAFE. Override to UNVERIFIED and log clearly.
+    if verdict in ("SAFE", "VERIFIED") and content_score >= 40:
+        logger.warning(
+            f"[SCORING] FAIL-LOUD: verdict={verdict!r} but content_score={content_score}>=40. "
+            f"Overriding to UNVERIFIED. ml_model_score={ml_model_score}, auth_score={auth_score}, "
+            f"final_score={final_score}. This is an aggregation inconsistency — "
+            f"content signals should have driven a higher verdict. Check content_analyzer output."
+        )
+        verdict = "UNVERIFIED"
+        risk_band = "MEDIUM"
+        risk_color = "#FBC02D"
+        final_score = max(final_score, 40)
+
+    logger.debug(
+        f"[SCORING] FINAL: verdict={verdict!r}, final_score={final_score}, "
+        f"risk_band={risk_band!r}"
+    )
 
     return {
         "risk_score": final_score,
@@ -348,6 +380,8 @@ def calculate_ps106_risk_score(
         "score_breakdown": {
             "ml_content_models": {"score": ml_model_score, "weight": 0.60},
             "gmail_api_auth": {"score": auth_score, "weight": 0.40},
+            "content_risk_score_raw": content_score,
+            "geoip_anomaly_score": geoip_score,
         },
     }
 

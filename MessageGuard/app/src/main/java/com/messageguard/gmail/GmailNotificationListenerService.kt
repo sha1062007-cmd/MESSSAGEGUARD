@@ -62,7 +62,7 @@ class GmailNotificationListenerService : NotificationListenerService() {
         // Backend API endpoint (configurable via SharedPreferences)
         private const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8000"
 
-        // PS106 4-Band Verdict Colors
+        // SIH26106 4-Band Verdict Colors
         private const val COLOR_SAFE       = 0xFF4CAF50.toInt()  // Green
         private const val COLOR_UNVERIFIED = 0xFFFBC02D.toInt()  // Yellow
         private const val COLOR_SUSPICIOUS = 0xFFFF9800.toInt()  // Orange
@@ -256,7 +256,7 @@ class GmailNotificationListenerService : NotificationListenerService() {
     }
 
     /**
-     * Show PS106 4-band color-coded verdict notification
+     * Show SIH26106 4-band color-coded verdict notification
      */
     private fun showVerdictNotification(
         notificationId: Int,

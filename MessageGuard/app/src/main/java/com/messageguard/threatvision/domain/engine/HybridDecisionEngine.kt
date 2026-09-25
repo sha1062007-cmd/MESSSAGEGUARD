@@ -192,21 +192,29 @@ class HybridDecisionEngine {
         val hasTechnicalEvidence = hasHighConfidenceTechnicalEvidence ||
             (hasShortLink && textThreatSignals.isCorroborated)
         val hasCloudEvidence = (geminiCloudScore ?: 0) >= 40
+        // Cloud AI >= 60 acts as an independent corroborating signal (equivalent to a second text signal group)
+        val cloudCorroborates = (geminiCloudScore ?: 0) >= 60
+        // High URL score (>=0.60) is independent strong evidence regardless of text corroboration
+        val urlStrongEvidence = edgeUrlScore >= 0.60f || urlScoreInt >= 60
+        // textOnlyUncorroborated: true only when NONE of (technical, cloud, url-strong, corroborated-text) hold
         val textOnlyUncorroborated = !isUpiCollectFraud && !hasTechnicalEvidence &&
-            !textThreatSignals.isCorroborated
+            !textThreatSignals.isCorroborated && !cloudCorroborates && !urlStrongEvidence
         val hasLegitimateRewardContext = rawLower.contains("cashback") &&
             (rawLower.contains("wallet") || rawLower.contains("bill") ||
                 rawLower.contains("credited") || rawLower.contains("valid for"))
         val noDirectScamLanguage = !hasStrongScamEvidence(rawLower, content.urls)
         val localModelSum = edgeUrlScore + edgeNlpScore + edgeStructuralScore + typosquatScore
         val localEvidenceClearlyClean = !hasTechnicalEvidence &&
-            !textThreatSignals.isCorroborated &&
+            !textThreatSignals.isCorroborated && !cloudCorroborates && !urlStrongEvidence &&
             noDirectScamLanguage &&
             edgeUrlScore < 0.30f && edgeNlpScore < 0.40f &&
             edgeStructuralScore < 0.30f && typosquatScore < 0.40f
 
         // A model score alone is not a scam verdict. This guard prevents a genuine OTP,
         // delivery cashback, or bank-maintenance message from being escalated for one generic word.
+        // IMPORTANT: This cap does NOT apply when URL forensics or Cloud AI provides independent
+        // high-confidence evidence (urlStrongEvidence or cloudCorroborates), because those are
+        // not "text-only" — they represent concrete technical/AI signals.
         if (textOnlyUncorroborated) {
             blended = blended.coerceAtMost(29)
         }
@@ -241,22 +249,48 @@ class HybridDecisionEngine {
         val maxNonTextComponentScore = components
             .filter { it.label != "Text Pattern (NLP)" }
             .maxOfOrNull { it.score } ?: 0
-        val effectiveScore = if (!textOnlyUncorroborated && maxNonTextComponentScore >= 85) {
+        // When any non-text model (URL, Cloud AI, Typosquat) scores >= 85, the final score
+        // must reflect that high-confidence technical evidence, even when text-only cap was applied.
+        val effectiveScore = if (maxNonTextComponentScore >= 85) {
+            // High-evidence component forces score above any textOnlyUncorroborated cap
             maxOf(blended, (maxNonTextComponentScore * 0.9f).toInt())
+        } else if (!textOnlyUncorroborated && maxNonTextComponentScore >= 60) {
+            maxOf(blended, (maxNonTextComponentScore * 0.75f).toInt())
         } else {
             blended
         }
         val finalRiskScore = effectiveScore
 
-        val verdict = when {
+        // FAIL-LOUD SAFETY NET: If the final verdict resolves to SAFE but any component
+        // scored >= 70 (DANGER level), this is an aggregation inconsistency.
+        // Never silently resolve to SAFE when high-evidence components exist.
+        // Flag as WARNING (isComplete=false) so the user is not falsely cleared.
+        val hasHighEvidenceComponent = components.any { it.score >= 70 && it.weight > 0.0 }
+        val rawVerdict = when {
             isUpiCollectFraud || effectiveScore >= ThreatThresholds.DANGER_THRESHOLD -> ThreatVerdict.DANGER
             effectiveScore >= 30 -> ThreatVerdict.WARNING
             else -> ThreatVerdict.SAFE
         }
+        val (verdict, failLoudTriggered) = if (rawVerdict == ThreatVerdict.SAFE && hasHighEvidenceComponent) {
+            // Fail loud: high-evidence component conflicts with SAFE verdict → flag as incomplete
+            android.util.Log.w(
+                "HybridEngine",
+                "FAIL-LOUD: rawVerdict=SAFE but maxNonText=$maxNonTextComponentScore% (>= 70). " +
+                "Overriding to WARNING (isComplete=false). blended=$blended, effectiveScore=$effectiveScore. " +
+                "Inputs: urlScore=$urlScoreInt, nlpScore=$nlpScoreInt, cloudScore=$geminiCloudScore"
+            )
+            Pair(ThreatVerdict.WARNING, true)
+        } else {
+            Pair(rawVerdict, false)
+        }
 
         android.util.Log.d(
             "FalsePositiveTest",
-            "HYBRID_ENGINE_EVAL: Text='${content.rawText.take(50)}' | Blended=$blended% | TextSignals=${textThreatSignals.count} | MaxNonText=$maxNonTextComponentScore% | EffectiveScore=$effectiveScore% | Verdict=$verdict"
+            "HYBRID_ENGINE_EVAL: Text='${content.rawText.take(50)}' | Blended=$blended% | " +
+            "TextSignals=${textThreatSignals.count} | MaxNonText=$maxNonTextComponentScore% | " +
+            "EffectiveScore=$effectiveScore% | CloudCorroborates=$cloudCorroborates | " +
+            "UrlStrong=$urlStrongEvidence | TextOnlyUncorr=$textOnlyUncorroborated | " +
+            "FailLoud=$failLoudTriggered | FinalVerdict=$verdict"
         )
 
         // 5. Determine Threat Category
@@ -300,23 +334,40 @@ class HybridDecisionEngine {
             )
         }
 
+        // When fail-loud triggered, add a clear indicator to risk factors
+        val finalRiskFactors = if (failLoudTriggered) {
+            val failLoudMsg = "⚠ ANALYSIS INCOMPLETE: High-risk signals detected (${maxNonTextComponentScore}% peak score) — review required before clearing"
+            if (riskFactors.isEmpty()) listOf(failLoudMsg) else listOf(failLoudMsg) + riskFactors
+        } else if (riskFactors.isEmpty()) {
+            listOf("No high risk anomalies detected")
+        } else {
+            riskFactors
+        }
+
+        val finalSummary = if (failLoudTriggered) {
+            "⚠ Analysis Incomplete — High-risk model signals present. Manual review required."
+        } else {
+            summary
+        }
+
         val report = ThreatReport(
             overallVerdict = verdict,
             overallScore = finalRiskScore,
-            summary = summary,
+            summary = finalSummary,
             components = components,
-            riskFactors = if (riskFactors.isEmpty()) listOf("No high risk anomalies detected") else riskFactors,
-            recommendation = recommendations.firstOrNull() ?: "Stay vigilant"
+            riskFactors = finalRiskFactors,
+            recommendation = if (failLoudTriggered) "Review manually — automated scoring incomplete" else (recommendations.firstOrNull() ?: "Stay vigilant")
         )
 
         return RiskAssessment(
             riskScore = finalRiskScore,
             verdict = verdict,
             category = category,
-            reason = summary,
-            recommendations = recommendations,
+            reason = finalSummary,
+            recommendations = if (failLoudTriggered) listOf("Review manually — automated scoring may be incomplete") + recommendations else recommendations,
             report = report,
-            isTamilContent = MessageLanguageDetector.shouldUseTamil(content.rawText)
+            isTamilContent = MessageLanguageDetector.shouldUseTamil(content.rawText),
+            isComplete = !failLoudTriggered
         )
     }
 
