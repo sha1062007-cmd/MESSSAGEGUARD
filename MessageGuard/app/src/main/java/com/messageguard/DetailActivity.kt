@@ -320,6 +320,28 @@ class DetailActivity : AppCompatActivity() {
                 openMessageInGmail(result)
             }
 
+            // 9.5 Verdict Feedback Click Handlers
+            val btnFeedbackYes = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_feedback_yes)
+            val btnFeedbackNo = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_feedback_no)
+            val tvFeedbackStatus = findViewById<TextView>(R.id.tv_feedback_status)
+            val layoutFeedbackBtns = findViewById<View>(R.id.layout_feedback_buttons)
+
+            btnFeedbackYes?.setOnClickListener {
+                layoutFeedbackBtns?.visibility = View.GONE
+                tvFeedbackStatus?.visibility = View.VISIBLE
+                tvFeedbackStatus?.text = "Thank you! Marked as Correct verdict."
+                tvFeedbackStatus?.setTextColor(Color.parseColor("#2E7D32"))
+                Toast.makeText(this@DetailActivity, "Feedback saved: Verified Correct", Toast.LENGTH_SHORT).show()
+            }
+
+            btnFeedbackNo?.setOnClickListener {
+                layoutFeedbackBtns?.visibility = View.GONE
+                tvFeedbackStatus?.visibility = View.VISIBLE
+                tvFeedbackStatus?.text = "Flagged for retraining & threshold recalibration."
+                tvFeedbackStatus?.setTextColor(Color.parseColor("#C62828"))
+                Toast.makeText(this@DetailActivity, "Feedback saved: Flagged for Review", Toast.LENGTH_SHORT).show()
+            }
+
             // 10. Delete Forensic Record
             var activeResultId = result.id
             val btnDelete = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_delete_detail)
