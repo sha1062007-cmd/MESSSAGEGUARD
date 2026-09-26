@@ -68,13 +68,23 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def storeFilePath = localProps.getProperty("RELEASE_STORE_FILE", "messageguard-release.keystore")
+            storeFile file(storeFilePath)
+            storePassword localProps.getProperty("RELEASE_STORE_PASSWORD", "")
+            keyAlias localProps.getProperty("RELEASE_KEY_ALIAS", "")
+            keyPassword localProps.getProperty("RELEASE_KEY_PASSWORD", "")
+        }
+    }
+
     // 1. Optimize buildTypes for Hackathon Release & Demo testing
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug // Reuse debug keys for simple run installation
+            signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false

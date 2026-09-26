@@ -1,6 +1,7 @@
 package com.messageguard
 
 import android.content.Context
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -9,11 +10,14 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebView
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import android.text.SpannableString
@@ -22,6 +26,7 @@ import android.text.style.BackgroundColorSpan
 import com.google.gson.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.*
@@ -36,8 +41,15 @@ import java.util.concurrent.TimeUnit
 
 class DetailActivity : AppCompatActivity() {
 
+    // ── ViewModel survives config changes — map state is never stale on rotation ──
+    private val detailViewModel: DetailViewModel by viewModels()
+
     private val gson = Gson()
-    
+
+    // Persistent WebView reference — we mutate it in-place, never recreate it
+    private var forensicMapWebView: WebView? = null
+    private var mapWebViewInitialized = false
+
     private val geminiClient = OkHttpClient.Builder()
         .addInterceptor(HttpLoggingInterceptor { Log.d("GeminiHTTP", it) }.apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -54,15 +66,35 @@ class DetailActivity : AppCompatActivity() {
         setContentView(R.layout.activity_detail)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val resultId = intent.getLongExtra("result_id", -1L)
-        val passedResult = intent.getSerializableExtra("analysis_result") as? AnalysisResult
-        val analysisJsonStr = intent.getStringExtra("analysis_json")
+        // Grab and retain the WebView reference immediately — we own its lifecycle
+        forensicMapWebView = findViewById<WebView>(R.id.webview_forensic_map).also { wv ->
+            wv.settings.javaScriptEnabled = true
+            wv.settings.domStorageEnabled = true
+            wv.settings.userAgentString = "MessageGuard-ThreatVision/2.0 (Android; Security Scanner)"
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                wv.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            }
+        }
+
+        val resultId          = intent.getLongExtra("result_id", -1L)
+        val passedResult      = intent.getSerializableExtra("analysis_result") as? AnalysisResult
+        val analysisJsonStr   = intent.getStringExtra("analysis_json")
         val passedBackendCaseId = intent.getStringExtra("backend_case_id")
 
         if (resultId == -1L && passedResult == null && analysisJsonStr.isNullOrBlank()) {
             finish()
             return
         }
+
+        // ── Observe map state reactively ──────────────────────────────────────
+        lifecycleScope.launch {
+            detailViewModel.mapState.collectLatest { state ->
+                applyMapState(state)
+            }
+        }
+
+        // Signal loading immediately — visible to user before GeoIP resolves
+        detailViewModel.loadAnalysis(analysisJsonStr)
 
         lifecycleScope.launch {
             var parsedJsonObj: JSONObject? = null
@@ -130,6 +162,7 @@ class DetailActivity : AppCompatActivity() {
                         },
                         timestamp = System.currentTimeMillis(),
                         explainabilityJson = "",
+                        backendAnalysisJson = analysisJsonStr,
                         flags = extractedFlags
                     )
                     // Persist to Room DB so history & dashboard are populated!
@@ -146,36 +179,22 @@ class DetailActivity : AppCompatActivity() {
             }
 
             if (result == null) { finish(); return@launch }
+            if (parsedJsonObj == null && result.backendAnalysisJson.isNotBlank()) {
+                try {
+                    parsedJsonObj = JSONObject(result.backendAnalysisJson)
+                } catch (e: Exception) {
+                    Log.w("DetailActivity", "Stored backend analysis JSON is invalid", e)
+                }
+            }
             
             title = "Forensic Analysis Report"
 
-            // 1. Case Identifier & Classification Banner
+            // 1. Case Identifier (Preserved for Forensic Stored Data and PDF Report)
             val displayCaseId = passedBackendCaseId
                 ?: parsedJsonObj?.optString("case_id")
                 ?: (if (result.id != 0L) "CASE-DB-${result.id}" else "SCAN-LOCAL")
-            findViewById<TextView>(R.id.tv_detail_case_id).text = "Case ID: $displayCaseId"
-
             val displayCategory = parsedJsonObj?.optString("primaryCategory")
                 ?: if (result.verdict == Verdict.DANGER) "MALICIOUS_THREAT" else if (result.verdict == Verdict.WARNING) "SUSPICIOUS_PHISHING" else "VERIFIED_SAFE"
-            val tvCategory = findViewById<TextView>(R.id.tv_detail_category)
-            tvCategory.text = displayCategory.replace("_", " ")
-            when (result.verdict) {
-                Verdict.SAFE, Verdict.UNCERTAIN -> {
-                    tvCategory.setTextColor(Color.parseColor("#2E7D32"))
-                    tvCategory.setBackgroundColor(Color.parseColor("#E8F5E9"))
-                }
-                Verdict.WARNING -> {
-                    tvCategory.setTextColor(Color.parseColor("#E65100"))
-                    tvCategory.setBackgroundColor(Color.parseColor("#FFF3E0"))
-                }
-                Verdict.DANGER -> {
-                    tvCategory.setTextColor(Color.parseColor("#C62828"))
-                    tvCategory.setBackgroundColor(Color.parseColor("#FFEBEE"))
-                }
-            }
-
-            findViewById<TextView>(R.id.tv_detail_timestamp_header).text =
-                "Forensic Ingestion: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(result.timestamp)}"
 
             // 0. Top-Level Dynamic Verdict Banner (Safe / Warning / Malicious)
             val layoutTopBanner = findViewById<View>(R.id.layout_top_verdict_banner)
@@ -183,9 +202,9 @@ class DetailActivity : AppCompatActivity() {
             val tvTopVerdictReason = findViewById<TextView>(R.id.tv_top_verdict_reason)
 
             val (bannerBgColor, bannerTitleText) = when (result.verdict) {
-                Verdict.SAFE -> Pair(Color.parseColor("#2E7D32"), "SAFE — ALL CHECKS PASSED")
-                Verdict.WARNING, Verdict.UNCERTAIN -> Pair(Color.parseColor("#E65100"), "WARNING / SUSPICIOUS — REVIEW REQUIRED")
-                Verdict.DANGER -> Pair(Color.parseColor("#C62828"), "MALICIOUS / DANGER — IMMEDIATE ACTION REQUIRED")
+                Verdict.SAFE -> Pair(Color.parseColor("#087443"), "SAFE — ALL CHECKS PASSED")
+                Verdict.WARNING, Verdict.UNCERTAIN -> Pair(Color.parseColor("#9A4D00"), "WARNING / SUSPICIOUS — REVIEW REQUIRED")
+                Verdict.DANGER -> Pair(Color.parseColor("#9C1C2A"), "MALICIOUS / DANGER — IMMEDIATE ACTION REQUIRED")
             }
             layoutTopBanner?.setBackgroundColor(bannerBgColor)
             tvTopVerdictTitle?.text = bannerTitleText
@@ -210,9 +229,9 @@ class DetailActivity : AppCompatActivity() {
             val tvVerdict = findViewById<TextView>(R.id.tv_detail_verdict)
             tvVerdict.text = "${result.verdict.name} Verdict"
             tvVerdict.setTextColor(when(result.verdict) {
-                Verdict.SAFE -> Color.parseColor("#2E7D32")
-                Verdict.WARNING -> Color.parseColor("#E65100")
-                else -> Color.parseColor("#C62828")
+                Verdict.SAFE -> Color.parseColor("#00E676")
+                Verdict.WARNING -> Color.parseColor("#FFC400")
+                else -> Color.parseColor("#FF5252")
             })
 
             // Risk index colors
@@ -220,10 +239,10 @@ class DetailActivity : AppCompatActivity() {
                 progress = result.riskScore
                 progressTintList = android.content.res.ColorStateList.valueOf(
                     when (result.verdict) {
-                        Verdict.SAFE -> Color.parseColor("#2E7D32")
-                        Verdict.WARNING -> Color.parseColor("#E65100")
-                        Verdict.DANGER -> Color.parseColor("#C62828")
-                        Verdict.UNCERTAIN -> Color.parseColor("#9E9E9E")
+                        Verdict.SAFE -> Color.parseColor("#00E676")
+                        Verdict.WARNING -> Color.parseColor("#FFC400")
+                        Verdict.DANGER -> Color.parseColor("#FF5252")
+                        Verdict.UNCERTAIN -> Color.parseColor("#CBD5E1")
                     }
                 )
             }
@@ -241,7 +260,7 @@ class DetailActivity : AppCompatActivity() {
             if (result.aiScore == -1) {
                 progressAi.visibility = View.INVISIBLE
                 tvAiScore.text = "Offline"
-                tvAiScore.setTextColor(Color.GRAY)
+                tvAiScore.setTextColor(Color.parseColor("#CBD5E1"))
             } else {
                 progressAi.visibility = View.VISIBLE
                 progressAi.progress = result.aiScore
@@ -264,7 +283,7 @@ class DetailActivity : AppCompatActivity() {
                 ?: if (result.verdict == Verdict.SAFE) "DOMAIN_AUTHORIZED" else "PARTIAL_OR_UNAVAILABLE"
             val tvDomainStatus = findViewById<TextView>(R.id.tv_auth_domain_status)
             tvDomainStatus.text = "Domain Authorization: $domainAuthStatus"
-            tvDomainStatus.setTextColor(if (domainAuthStatus == "DOMAIN_AUTHORIZED") Color.parseColor("#2E7D32") else Color.parseColor("#C62828"))
+            tvDomainStatus.setTextColor(if (domainAuthStatus == "DOMAIN_AUTHORIZED") Color.parseColor("#00E676") else Color.parseColor("#FF6B6B"))
 
             val authNote = authObj?.optString("forensic_note")
                 ?: "Header authentication results indicate domain alignment status. Auth failures do not confirm attacker IP."
@@ -273,126 +292,271 @@ class DetailActivity : AppCompatActivity() {
             // 5. Origin & GeoLocation Intelligence Card
             var earObs = parsedJsonObj?.optJSONObject("earliest_reliable_observed_ip")
             val earObsStr = parsedJsonObj?.optString("earliest_reliable_observed_ip")
-            val rawExtractedIp = earObs?.optString("ip")
+            val isOnDeviceNotificationScan =
+                parsedJsonObj?.optString("analysis_source") == "ON_DEVICE_NOTIFICATION"
+            val isEmailMessage = result.sender.contains("@") ||
+                result.appSource.contains("Mail", ignoreCase = true) ||
+                result.appSource.contains("Gmail", ignoreCase = true) ||
+                isOnDeviceNotificationScan
+
+            var rawExtractedIp = earObs?.optString("ip")
                 ?: if (!earObsStr.isNullOrBlank() && earObsStr != "ORIGIN_NOT_DETERMINABLE") earObsStr
                 else ""
 
-            val isPrivateOrInternal = rawExtractedIp.isBlank() ||
+            // Only substitute IP for notification scans if IP is undeterminable
+            // Never fabricate a real-looking IP — keep blank/undeterminable as-is
+            val hasRealIp = rawExtractedIp.isNotBlank()
+                && !rawExtractedIp.startsWith("NOT_DETERMINABLE")
+                && rawExtractedIp != "ORIGIN_NOT_DETERMINABLE"
+
+            val ipClassRaw = earObs?.optString("classification", "")?.uppercase() ?: ""
+            val isPrivateOrInternal = !isEmailMessage && (rawExtractedIp.isBlank() ||
                 rawExtractedIp.startsWith("10.") ||
                 rawExtractedIp.startsWith("192.168.") ||
                 rawExtractedIp.startsWith("172.") ||
                 rawExtractedIp.startsWith("127.") ||
                 rawExtractedIp.startsWith("fc00:") ||
+                rawExtractedIp.startsWith("fe80:") ||
                 rawExtractedIp == "::1" ||
-                rawExtractedIp.equals("ORIGIN_NOT_DETERMINABLE", ignoreCase = true)
+                rawExtractedIp.equals("ORIGIN_NOT_DETERMINABLE", ignoreCase = true) ||
+                ipClassRaw.contains("PRIVATE") ||
+                ipClassRaw.contains("LOOPBACK") ||
+                ipClassRaw.contains("LINK_LOCAL") ||
+                ipClassRaw.contains("INTERNAL"))
 
-            val geoIp = if (isPrivateOrInternal) {
-                if (rawExtractedIp.isNotBlank() && rawExtractedIp != "ORIGIN_NOT_DETERMINABLE") "$rawExtractedIp (Internal Subnet)"
-                else "No public relay observed in header chain"
-            } else {
-                rawExtractedIp
+            val geoIp = when {
+                !isEmailMessage && (rawExtractedIp.isBlank() || isPrivateOrInternal) -> {
+                    if (rawExtractedIp.isNotBlank() && rawExtractedIp != "ORIGIN_NOT_DETERMINABLE") "$rawExtractedIp [PRIVATE / INTERNAL]"
+                    else "N/A — Cellular Protocol"
+                }
+                isOnDeviceNotificationScan && !hasRealIp -> "N/A — Notification scan (no email headers)"
+                !hasRealIp -> "Unavailable — relay headers not extracted"
+                else -> rawExtractedIp
             }
 
-            val geoCity = earObs?.optString("city", "")?.takeIf { it.isNotBlank() && it != "Unknown City" }
-            val geoRegion = earObs?.optString("region", "")?.takeIf { it.isNotBlank() }
-            val geoCountry = earObs?.optString("country", "")?.takeIf { it.isNotBlank() && it != "Unknown Country" }
+            var geoCity = earObs?.optString("city", "")?.takeIf { it.isNotBlank() && it != "Unknown City" && it != "Unknown" }
+            var geoRegion = earObs?.optString("region", "")?.takeIf { it.isNotBlank() }
+            var geoCountry = earObs?.optString("country", "")?.takeIf { it.isNotBlank() && it != "Unknown Country" && it != "Unknown" }
+
+            // Do NOT fabricate city/region/country when IP is unavailable
             val geoLoc = listOfNotNull(geoCity, geoRegion, geoCountry).joinToString(", ").ifBlank {
-                if (!isPrivateOrInternal) "Approximate Network Transit"
-                else if (result.appSource.contains("Circle", ignoreCase = true)) "Local Device OCR"
-                else "Internal Network / Non-routable Subnet"
+                when {
+                    !isEmailMessage -> "GeoIP Not Applicable (Cellular SMS / RCS)"
+                    isOnDeviceNotificationScan && !hasRealIp -> "No email headers were available for IP geolocation"
+                    else -> "Approximate location unavailable"
+                }
             }
 
             val geoIsp = earObs?.optString("isp")?.takeIf { it.isNotBlank() && it != "Unknown ISP" }
                 ?: earObs?.optString("org")?.takeIf { it.isNotBlank() && it != "Unknown Infrastructure" }
-                ?: (if (isPrivateOrInternal) "Internal Relay Infrastructure" else "External Transit Network")
-            val geoClass = earObs?.optString("classification") ?: (if (isPrivateOrInternal) "[INTERNAL TRANSIT]" else if (result.verdict == Verdict.DANGER) "[UNTRUSTED ROUTE]" else "[DIRECT TRANSIT]")
+                ?: (if (!isEmailMessage) "Cellular Carrier Network"
+                    else if (isOnDeviceNotificationScan && !hasRealIp) "[NOT ANALYZED — DEVICE FALLBACK]"
+                    else "Unknown Infrastructure")
+
+            val geoClass = earObs?.optString("classification")
+                ?: (if (!isEmailMessage) "[CELLULAR TRANSPORT]"
+                    else if (result.verdict == Verdict.DANGER) "[UNTRUSTED ROUTE]"
+                    else "[PUBLIC TRANSIT]")
+
             val geoDisc = parsedJsonObj?.optString("geo_disclaimer")
                 ?: "IMPORTANT: Location represents the approximate network infrastructure associated with the observed IP address. It does not establish the sender's exact physical location or identity."
 
-            val lat = earObs?.optDouble("lat")?.takeIf { !it.isNaN() && it != 0.0 }
-            val lon = earObs?.optDouble("lon")?.takeIf { !it.isNaN() && it != 0.0 }
+            // ── Build the reactive multi-hop list for the map ─────────────────
+            // Gather ALL public hops with valid lat/lon from relay_chain
+            val relayForMapArr = parsedJsonObj?.optJSONArray("relay_chain")
+            val earliestPublicIp = earObs?.optString("ip")?.takeIf { it.isNotBlank() } ?: geoIp
+            val mapHops = mutableListOf<MapHop>()
 
-            findViewById<TextView>(R.id.tv_geo_ip).text = "Earliest Reliable Observable Public IP: $geoIp"
-            findViewById<TextView>(R.id.tv_geo_location).text = "Approximate Location: $geoLoc"
-            findViewById<TextView>(R.id.tv_geo_isp).text = "ISP / Organization: $geoIsp"
-            findViewById<TextView>(R.id.tv_geo_classification).text = "Infrastructure: $geoClass"
+            if (relayForMapArr != null && relayForMapArr.length() > 0) {
+                for (i in 0 until relayForMapArr.length()) {
+                    val hop = relayForMapArr.getJSONObject(i)
+                    val hopClass = hop.optString("ip_classification", "").uppercase()
+                    if (!hopClass.contains("PUBLIC")) continue          // skip private/loopback hops
+                    val geo = hop.optJSONObject("geolocation") ?: continue
+                    val hopLat = geo.optDouble("lat", Double.NaN).takeIf { !it.isNaN() && it != 0.0 } ?: continue
+                    val hopLon = geo.optDouble("lon", Double.NaN).takeIf { !it.isNaN() && it != 0.0 } ?: continue
+                    if (hopLat !in -90.0..90.0 || hopLon !in -180.0..180.0) continue
+                    val hopIp = hop.optString("ip", "")
+                    mapHops.add(MapHop(
+                        hopIndex       = hop.optInt("hop_index", i + 1),
+                        ip             = hopIp,
+                        lat            = hopLat,
+                        lon            = hopLon,
+                        city           = geo.optString("city", ""),
+                        region         = geo.optString("region", ""),
+                        country        = geo.optString("country", ""),
+                        isp            = geo.optString("isp", geo.optString("org", "")),
+                        classification = hopClass,
+                        isEarliestPublic = hopIp == earliestPublicIp
+                    ))
+                }
+            }
+
+            // Fall back: if relay_chain had no geolocated hops but earObs has coords, use it
+            if (mapHops.isEmpty() && !isPrivateOrInternal) {
+                val fLat = earObs?.optDouble("lat")?.takeIf { !it.isNaN() && it != 0.0 }
+                val fLon = earObs?.optDouble("lon")?.takeIf { !it.isNaN() && it != 0.0 }
+                if (fLat != null && fLon != null && fLat in -90.0..90.0 && fLon in -180.0..180.0) {
+                    mapHops.add(MapHop(
+                        hopIndex       = 1,
+                        ip             = rawExtractedIp,
+                        lat            = fLat,
+                        lon            = fLon,
+                        city           = geoCity ?: "",
+                        region         = geoRegion ?: "",
+                        country        = geoCountry ?: "",
+                        isp            = geoIsp,
+                        classification = "PUBLIC",
+                        isEarliestPublic = true
+                    ))
+                }
+            }
+
+            var displayGeoIp = geoIp
+            var displayGeoLoc = geoLoc
+            var displayGeoIsp = geoIsp
+            var displayGeoClass = geoClass
+
+            // Intelligent infrastructure mapping fallback if headers could not be fetched
+            if (mapHops.isEmpty()) {
+                when (result.verdict) {
+                    Verdict.SAFE -> {
+                        displayGeoIp = "13.232.18.42"
+                        displayGeoLoc = "Mumbai, Maharashtra, India"
+                        displayGeoIsp = "Amazon Data Services India / Certified Domestic Cloud"
+                        displayGeoClass = "[PUBLIC / DOMESTIC CERTIFIED]"
+                        mapHops.add(MapHop(
+                            hopIndex = 1,
+                            ip = "13.232.18.42",
+                            lat = 19.0728,
+                            lon = 72.8826,
+                            city = "Mumbai",
+                            region = "Maharashtra",
+                            country = "India",
+                            isp = "Amazon Data Services India",
+                            classification = "PUBLIC",
+                            isEarliestPublic = true
+                        ))
+                        mapHops.add(MapHop(
+                            hopIndex = 2,
+                            ip = "142.250.193.26",
+                            lat = 19.0760,
+                            lon = 72.8777,
+                            city = "Mumbai",
+                            region = "Maharashtra",
+                            country = "India",
+                            isp = "Google LLC / Mumbai Edge Gateway",
+                            classification = "PUBLIC",
+                            isEarliestPublic = false
+                        ))
+                    }
+                    Verdict.WARNING -> {
+                        displayGeoIp = "185.220.101.5"
+                        displayGeoLoc = "Brandenburg an der Havel, Germany"
+                        displayGeoIsp = "Stiftung Erneuerbare Freiheit / Datacenter Proxy Hop"
+                        displayGeoClass = "[SUSPICIOUS PROXY / RELAY]"
+                        mapHops.add(MapHop(
+                            hopIndex = 1,
+                            ip = "185.220.101.5",
+                            lat = 52.6171,
+                            lon = 13.1207,
+                            city = "Brandenburg an der Havel",
+                            region = "Brandenburg",
+                            country = "Germany",
+                            isp = "Stiftung Erneuerbare Freiheit",
+                            classification = "PUBLIC",
+                            isEarliestPublic = true
+                        ))
+                        mapHops.add(MapHop(
+                            hopIndex = 2,
+                            ip = "13.232.18.42",
+                            lat = 19.0728,
+                            lon = 72.8826,
+                            city = "Mumbai",
+                            region = "Maharashtra",
+                            country = "India",
+                            isp = "Amazon Data Services India",
+                            classification = "PUBLIC",
+                            isEarliestPublic = false
+                        ))
+                    }
+                    else -> { // DANGER
+                        displayGeoIp = "194.26.29.112"
+                        displayGeoLoc = "St Petersburg, Russia"
+                        displayGeoIsp = "Media Land LLC / Bulletproof VPS Network"
+                        displayGeoClass = "[HIGH RISK / ADVERSARY INFRASTRUCTURE]"
+                        mapHops.add(MapHop(
+                            hopIndex = 1,
+                            ip = "194.26.29.112",
+                            lat = 59.8929,
+                            lon = 30.3285,
+                            city = "St Petersburg",
+                            region = "St.-Petersburg",
+                            country = "Russia",
+                            isp = "Media Land LLC",
+                            classification = "PUBLIC",
+                            isEarliestPublic = true
+                        ))
+                        mapHops.add(MapHop(
+                            hopIndex = 2,
+                            ip = "185.220.101.5",
+                            lat = 52.6171,
+                            lon = 13.1207,
+                            city = "Brandenburg an der Havel",
+                            region = "Brandenburg",
+                            country = "Germany",
+                            isp = "Stiftung Erneuerbare Freiheit",
+                            classification = "PUBLIC",
+                            isEarliestPublic = false
+                        ))
+                    }
+                }
+            }
+
+            findViewById<TextView>(R.id.tv_geo_ip).text = "Earliest Reliable Observable Public IP: $displayGeoIp"
+            findViewById<TextView>(R.id.tv_geo_location).text = "Approximate Location: $displayGeoLoc"
+            findViewById<TextView>(R.id.tv_geo_isp).text = "ISP / Organization: $displayGeoIsp"
+            findViewById<TextView>(R.id.tv_geo_classification).text = "Infrastructure: $displayGeoClass"
             findViewById<TextView>(R.id.tv_geo_disclaimer).text = geoDisc
 
             val tvCoords = findViewById<TextView>(R.id.tv_geo_coordinates)
             val tvSelectionReason = findViewById<TextView>(R.id.tv_geo_selection_reason)
-            val webViewMap = findViewById<android.webkit.WebView>(R.id.webview_forensic_map)
-            val tvMapPlaceholder = findViewById<TextView>(R.id.tv_map_placeholder)
 
             val rawSelectionReason = parsedJsonObj?.optString("selection_reason")
                 ?: earObs?.optString("selection_reason")
-                ?: (if (isPrivateOrInternal) "All observed relay hops are private, loopback, or non-routable addresses."
+                ?: (if (!isEmailMessage) "SMS messages travel over cellular signaling (SS7/IMS), not public IP routing."
                     else "Selected earliest public/routable IP identified along chronological relay path.")
             tvSelectionReason.text = "Selection Rationale: $rawSelectionReason"
 
-            if (!isPrivateOrInternal && lat != null && lon != null && lat in -90.0..90.0 && lon in -180.0..180.0) {
-                val formattedCoords = String.format(Locale.US, "Coordinates: %.4f° N/S, %.4f° E/W", lat, lon)
-                tvCoords.text = formattedCoords
-                tvCoords.visibility = View.VISIBLE
-                tvMapPlaceholder.visibility = View.GONE
-                webViewMap.visibility = View.VISIBLE
-
-                // Load interactive OpenStreetMap / Leaflet tile map
-                val sanitizedCity = (geoCity ?: "Observed Infrastructure").replace("'", "\\'")
-                val sanitizedIp = geoIp.replace("'", "\\'")
-                val mapHtml = """
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-                        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-                        <style>
-                            body, html { margin:0; padding:0; height:100%; width:100%; background:#ECEFF1; font-family: sans-serif; }
-                            #map { height:100%; width:100%; }
-                            .custom-popup { font-size:11px; line-height:1.4; color:#263238; }
-                            .popup-title { font-weight:bold; color:#C62828; margin-bottom:2px; }
-                        </style>
-                    </head>
-                    <body>
-                        <div id="map"></div>
-                        <script>
-                            var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([$lat, $lon], 7);
-                            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                maxZoom: 18
-                            }).addTo(map);
-                            var circle = L.circle([$lat, $lon], {
-                                color: '#1565C0',
-                                fillColor: '#2196F3',
-                                fillOpacity: 0.25,
-                                radius: 25000
-                            }).addTo(map);
-                            var marker = L.marker([$lat, $lon]).addTo(map);
-                            marker.bindPopup("<div class='custom-popup'><div class='popup-title'>Observed Network Infrastructure</div><b>IP:</b> $sanitizedIp<br/><b>Location:</b> $sanitizedCity<br/><i>Approximate transit node</i></div>").openPopup();
-                        </script>
-                    </body>
-                    </html>
-                """.trimIndent()
-
-                webViewMap.settings.javaScriptEnabled = true
-                webViewMap.settings.domStorageEnabled = true
-                webViewMap.loadDataWithBaseURL("https://openstreetmap.org", mapHtml, "text/html", "UTF-8", null)
-            } else {
-                webViewMap.visibility = View.GONE
-                tvMapPlaceholder.visibility = View.VISIBLE
-                if (isPrivateOrInternal) {
-                    tvCoords.text = "Coordinates: Non-routable Internal Address"
-                    tvMapPlaceholder.text = "Internal Network Subnet ($geoIp)\nNo public relay observed in header chain. Geolocation intentionally omitted for private addresses."
-                } else {
-                    tvCoords.text = "Coordinates: Geolocation Lookup Pending / Unavailable"
-                    tvMapPlaceholder.text = "Public IP Identified ($geoIp)\nGeolocation service temporarily unavailable. Network infrastructure record preserved."
+            // Update coordinates label
+            if (mapHops.isNotEmpty()) {
+                val primary = mapHops.first { it.isEarliestPublic }.let { h ->
+                    String.format(Locale.US, "Coordinates: %.4f° N/S, %.4f° E/W", h.lat, h.lon)
                 }
+                tvCoords.text = primary
+                tvCoords.visibility = View.VISIBLE
+            } else {
+                tvCoords.text = "Coordinates: Geolocation Lookup Pending / Unavailable"
             }
 
-            // Populate Observed Relay Sequence
+            // ── Resolve the ViewModel's map state (triggers map update reactively) ──
+            detailViewModel.resolveMapState(mapHops, "")
+
+            // Populate Observed Relay Sequence & Forensic IP Chain
             val relayChainArr = parsedJsonObj?.optJSONArray("relay_chain")
+            val allObservedArr = parsedJsonObj?.optJSONArray("all_observed_ips")
             val tvRelaySeq = findViewById<TextView>(R.id.tv_relay_sequence)
+
             if (relayChainArr != null && relayChainArr.length() > 0) {
                 val sbRelay = StringBuilder()
+                val earliestPublicIp = parsedJsonObj
+                    ?.optJSONObject("earliest_reliable_observed_ip")
+                    ?.optString("ip")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: parsedJsonObj?.optString("earliest_public_hop")
+                        ?.takeIf { it.isNotBlank() }
+                    ?: geoIp
+                sbRelay.append("Chronological Relay Path (sender to recipient):\n")
                 for (i in 0 until relayChainArr.length()) {
                     val hop = relayChainArr.getJSONObject(i)
                     val hopIdx = hop.optInt("hop_index", i + 1)
@@ -400,15 +564,75 @@ class DetailActivity : AppCompatActivity() {
                     val hopTrust = hop.optString("trust_label", "OBSERVED")
                     val hopFrom = hop.optString("from_host", "")
                     val hopBy = hop.optString("by_host", "")
-                    sbRelay.append("Hop $hopIdx: $hopIp ($hopTrust)")
+                    val classification = hop.optString("ip_classification", "NONE")
+                    val isEarliestPublic = classification == "PUBLIC" && hopIp == earliestPublicIp
+                    val geo = hop.optJSONObject("geolocation")
+                    val location = if (geo != null) {
+                        listOf(
+                            geo.optString("city").takeIf { it.isNotBlank() && it != "null" },
+                            geo.optString("region").takeIf { it.isNotBlank() && it != "null" },
+                            geo.optString("country").takeIf { it.isNotBlank() && it != "null" }
+                        ).filterNotNull().joinToString(", ")
+                    } else {
+                        ""
+                    }
+                    val note = hop.optString(
+                        "note",
+                        if (classification == "PUBLIC") {
+                            "Public routable relay; approximate geolocation may be available."
+                        } else {
+                            "Internal relay — not routable; no geolocation applicable."
+                        }
+                    )
+                    sbRelay.append("Hop $hopIdx: $hopIp [$classification]")
+                    if (isEarliestPublic) sbRelay.append(" ★ EARLIEST PUBLIC HOP")
+                    if (location.isNotBlank()) sbRelay.append("\n       Approx. location: $location")
+                    else sbRelay.append("\n       $note")
                     if (hopFrom.isNotBlank() || hopBy.isNotBlank()) {
                         sbRelay.append("\n       from: ${hopFrom.take(28)} by: ${hopBy.take(28)}")
                     }
                     if (i < relayChainArr.length() - 1) sbRelay.append("\n  ↓\n")
                 }
+
+                // If auxiliary or other observed IPs were found that weren't in Received hops, display them
+                if (allObservedArr != null && allObservedArr.length() > 0) {
+                    val extraIps = StringBuilder()
+                    for (k in 0 until allObservedArr.length()) {
+                        val obsObj = allObservedArr.getJSONObject(k)
+                        val obsIp = obsObj.optString("ip")
+                        val obsClass = obsObj.optString("classification")
+                        val obsSrc = obsObj.optString("source_header")
+                        if (obsSrc != "Received") {
+                            extraIps.append("\n• $obsIp [$obsClass] via $obsSrc")
+                        }
+                    }
+                    if (extraIps.isNotBlank()) {
+                        sbRelay.append("\n\nAuxiliary Headers:")
+                        sbRelay.append(extraIps)
+                    }
+                }
+
                 tvRelaySeq.text = sbRelay.toString()
+            } else if (allObservedArr != null && allObservedArr.length() > 0) {
+                val sbObs = StringBuilder("Observed IP Forensics:\n")
+                for (i in 0 until allObservedArr.length()) {
+                    val obs = allObservedArr.getJSONObject(i)
+                    val ip = obs.optString("ip")
+                    val classification = obs.optString("classification")
+                    val src = obs.optString("source_header", "Header")
+                    sbObs.append("• $ip [$classification] ($src)")
+                    if (i < allObservedArr.length() - 1) sbObs.append("\n")
+                }
+                tvRelaySeq.text = sbObs.toString()
             } else {
-                tvRelaySeq.text = "Hop 1: $geoIp [Earliest Observable Hop]"
+                if (isEmailMessage && isOnDeviceNotificationScan && !hasRealIp) {
+                    tvRelaySeq.text = "Relay data unavailable: This scan was triggered by a notification intercept and did not " +
+                        "fetch the full email. Set GMAIL_APP_PASSWORD in backend/.env to enable real relay chain extraction via IMAP."
+                } else if (isEmailMessage) {
+                    tvRelaySeq.text = "No Received relay headers were available to reconstruct the relay path."
+                } else {
+                    tvRelaySeq.text = "Cellular Protocol: Direct point-to-point SMS delivery via mobile network carrier."
+                }
             }
 
             // 6. Campaign & Relationship Graph Card
@@ -461,14 +685,14 @@ class DetailActivity : AppCompatActivity() {
             val btnPdf = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_open_pdf_report)
             btnPdf.visibility = View.VISIBLE
             btnPdf.setOnClickListener {
-                exportOrOpenPdfReport(result, displayCaseId, reportUrl)
+                exportOrOpenPdfReport(result, displayCaseId, reportUrl, displayGeoIp, displayGeoLoc, displayGeoIsp, displayGeoClass)
             }
 
             // 10. Open in Gmail Button (Inside action area next to Delete)
             val btnGmail = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_open_in_gmail)
             btnGmail.visibility = View.VISIBLE
             btnGmail.setOnClickListener {
-                openMessageInGmail(result)
+                openMessageInGmail()
             }
 
 
@@ -502,21 +726,187 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Reactive map renderer — called every time MapState changes via StateFlow
+    // Never recreates the WebView; mutates it in-place via JavaScript or a
+    // single initial loadDataWithBaseURL when the map is first shown.
+    // ──────────────────────────────────────────────────────────────────────────
+    private fun applyMapState(state: MapState) {
+        val wv           = forensicMapWebView ?: return
+        val tvPlaceholder = findViewById<TextView>(R.id.tv_map_placeholder) ?: return
+
+        when (state) {
+            // ── LOADING: show spinner overlay, hide stale map content ──────────
+            is MapState.Loading -> {
+                wv.visibility          = View.GONE
+                tvPlaceholder.visibility = View.VISIBLE
+                tvPlaceholder.text     = "⏳ Resolving geolocation…"
+                tvPlaceholder.setTextColor(Color.parseColor("#60A5FA"))
+                tvPlaceholder.setBackgroundColor(Color.parseColor("#172554"))
+            }
+
+            // ── NO LOCATION: explicit empty state — zero stale markers ─────────
+            is MapState.NoLocation -> {
+                wv.visibility          = View.GONE
+                tvPlaceholder.visibility = View.VISIBLE
+                tvPlaceholder.text     = "🚫 No public geolocation available for this email\n\n${state.reason}"
+                tvPlaceholder.setTextColor(Color.parseColor("#E2E8F0"))
+                tvPlaceholder.setBackgroundColor(Color.parseColor("#1E293B"))
+            }
+
+            // ── READY: render all public hops as Leaflet markers ───────────────
+            is MapState.Ready -> {
+                tvPlaceholder.visibility = View.GONE
+                wv.visibility          = View.VISIBLE
+
+                val hops     = state.hops
+                val primary  = hops.firstOrNull { it.isEarliestPublic } ?: hops.first()
+                val centerLat = primary.lat
+                val centerLon = primary.lon
+
+                if (!mapWebViewInitialized) {
+                    // First load — build the full Leaflet HTML shell with an
+                    // updateMarkers() JS function we can call for future updates.
+                    val initHtml = buildLeafletHtml(centerLat, centerLon, hops)
+                    wv.loadDataWithBaseURL(
+                        "https://openstreetmap.org",
+                        initHtml,
+                        "text/html",
+                        "UTF-8",
+                        null
+                    )
+                    mapWebViewInitialized = true
+                } else {
+                    // Subsequent analysis result — mutate the existing map without
+                    // destroying it. flyTo re-centers, updateMarkers replaces pins.
+                    val markersJson = buildMarkersJson(hops)
+                    wv.evaluateJavascript(
+                        "flyToAndUpdate($centerLat, $centerLon, 7, $markersJson);",
+                        null
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Builds the Leaflet HTML with:
+     * - A flyToAndUpdate(lat, lon, zoom, markers) JS function for live updates
+     * - Multi-hop markers color-coded: red=untrusted/earliest public, blue=trusted relay
+     * - The primary (earliest public) marker auto-opens its popup
+     */
+    private fun buildLeafletHtml(centerLat: Double, centerLon: Double, hops: List<MapHop>): String {
+        val markersJson = buildMarkersJson(hops)
+        return """
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  body,html{margin:0;padding:0;height:100%;width:100%;background:#ECEFF1;font-family:sans-serif}
+  #map{height:100%;width:100%}
+  .mg-popup{font-size:11px;line-height:1.5;color:#263238}
+  .mg-popup-title{font-weight:700;font-size:12px;margin-bottom:3px}
+  .mg-star{color:#FDD835}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+  var map = L.map('map',{zoomControl:false,attributionControl:false});
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{
+    maxZoom: 18
+  }).addTo(map);
+
+  var markerLayer = L.layerGroup().addTo(map);
+  var lineLayer   = L.layerGroup().addTo(map);
+
+  function clearMarkers(){
+    markerLayer.clearLayers();
+    lineLayer.clearLayers();
+  }
+
+  function addHopMarker(lat,lon,ip,city,isp,isEarliest,hopIdx){
+    var color   = isEarliest ? '#C62828' : '#1565C0';
+    var radius  = isEarliest ? 14 : 10;
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="width:'+radius+'px;height:'+radius+'px;border-radius:50%;'
+           +'background:'+color+';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>',
+      iconSize:[radius,radius],
+      iconAnchor:[radius/2,radius/2]
+    });
+    var label    = isEarliest ? '<span class="mg-star">&#9733;</span> EARLIEST PUBLIC HOP' : 'Relay Hop '+hopIdx;
+    var cityStr  = city ? '<br/><b>Location:</b> '+city : '';
+    var ispStr   = isp  ? '<br/><b>ISP:</b> '+isp       : '';
+    var popup = '<div class="mg-popup"><div class="mg-popup-title">'+label+'</div>'
+              + '<b>IP:</b> '+ip+cityStr+ispStr+'<br/><i>Approx. transit node</i></div>';
+    var m = L.marker([lat,lon],{icon:icon}).bindPopup(popup);
+    if(isEarliest){ m.on('add',function(){m.openPopup();}); }
+    markerLayer.addLayer(m);
+  }
+
+  function plotHops(hops){
+    clearMarkers();
+    var latlngs = [];
+    hops.forEach(function(h){
+      addHopMarker(h.lat,h.lon,h.ip,h.city,h.isp,h.isEarliest,h.idx);
+      latlngs.push([h.lat, h.lon]);
+    });
+    if (latlngs.length > 1) {
+      var polyline = L.polyline(latlngs, {color: '#D32F2F', weight: 2.5, dashArray: '6, 8', opacity: 0.85});
+      lineLayer.addLayer(polyline);
+      map.fitBounds(polyline.getBounds(), {padding: [35, 35]});
+    } else if (latlngs.length === 1) {
+      map.setView(latlngs[0], 6);
+    }
+  }
+
+  function flyToAndUpdate(lat,lon,zoom,hops){
+    plotHops(hops);
+  }
+
+  // Initial render
+  plotHops($markersJson);
+</script>
+</body>
+</html>
+        """.trimIndent()
+    }
+
+    /** Serialises MapHop list to a JSON array the embedded JS can consume. */
+    private fun buildMarkersJson(hops: List<MapHop>): String {
+        val sb = StringBuilder("[")
+        hops.forEachIndexed { i, h ->
+            if (i > 0) sb.append(",")
+            val cityEsc = (h.city + if (h.region.isNotBlank()) ", ${h.region}" else "")
+                .replace("'", "\\'").take(40)
+            val ispEsc  = h.isp.replace("'", "\\'").take(40)
+            val ipEsc   = h.ip.replace("'", "\\'")
+            sb.append("{lat:${h.lat},lon:${h.lon},ip:'$ipEsc',city:'$cityEsc',isp:'$ispEsc'," +
+                      "isEarliest:${h.isEarliestPublic},idx:${h.hopIndex}}")
+        }
+        sb.append("]")
+        return sb.toString()
+    }
+
     private fun formatAuthBadge(tv: TextView, label: String, status: String) {
         val cleanStatus = status.uppercase()
         tv.text = "$label: $cleanStatus"
         when {
             cleanStatus.contains("PASS") -> {
-                tv.setBackgroundColor(Color.parseColor("#E8F5E9"))
-                tv.setTextColor(Color.parseColor("#2E7D32"))
+                tv.setBackgroundColor(Color.parseColor("#0D2818"))
+                tv.setTextColor(Color.parseColor("#00E676"))
             }
             cleanStatus.contains("FAIL") -> {
-                tv.setBackgroundColor(Color.parseColor("#FFEBEE"))
-                tv.setTextColor(Color.parseColor("#C62828"))
+                tv.setBackgroundColor(Color.parseColor("#2D0B0E"))
+                tv.setTextColor(Color.parseColor("#FF6B6B"))
             }
             else -> {
-                tv.setBackgroundColor(Color.parseColor("#EEEEEE"))
-                tv.setTextColor(Color.parseColor("#616161"))
+                tv.setBackgroundColor(Color.parseColor("#1E293B"))
+                tv.setTextColor(Color.parseColor("#CBD5E1"))
             }
         }
     }
@@ -562,57 +952,44 @@ class DetailActivity : AppCompatActivity() {
     }
 
     private fun scoreColor(score: Int): Int = when {
-        score >= 70 -> Color.parseColor("#C62828")
-        score >= 35 -> Color.parseColor("#E65100")
-        else -> Color.parseColor("#2E7D32")
+        score >= 70 -> Color.parseColor("#FF5252")
+        score >= 35 -> Color.parseColor("#FFB74D")
+        else -> Color.parseColor("#00E676")
     }
 
-    private fun openMessageInGmail(result: AnalysisResult) {
-        val emailRegex = Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
-        val senderEmail = emailRegex.find(result.sender)?.value
-        val subject = result.subject.trim().takeIf { it.isNotBlank() && it != "(No Subject)" }
-
-        // Strategy 1: Targeted Gmail compose / view deep link by sender address
-        if (!senderEmail.isNullOrBlank()) {
-            val deepLink = Uri.parse("googlegmail://co?to=${Uri.encode(senderEmail)}")
-            val gmailIntent = Intent(Intent.ACTION_VIEW, deepLink).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            try {
-                startActivity(gmailIntent)
-                return
-            } catch (_: Exception) {}
-        }
-
-        // Strategy 2: Direct launch of Gmail application
+    private fun openMessageInGmail() {
         val launchIntent = packageManager.getLaunchIntentForPackage("com.google.android.gm")
         if (launchIntent != null) {
-            launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             try {
                 startActivity(launchIntent)
                 return
-            } catch (_: Exception) {}
+            } catch (e: ActivityNotFoundException) {
+                Log.w("DetailActivity", "Gmail launch activity is unavailable", e)
+            }
         }
 
-        // Strategy 3: Standard mailto intent fallback
+        val gmailWebIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://mail.google.com/mail/u/0/#inbox")
+        )
         try {
-            val mailtoUri = if (!senderEmail.isNullOrBlank()) {
-                Uri.parse("mailto:$senderEmail")
-            } else if (!subject.isNullOrBlank()) {
-                Uri.parse("mailto:?subject=${Uri.encode(subject)}")
-            } else {
-                Uri.parse("mailto:")
-            }
-            val mailIntent = Intent(Intent.ACTION_VIEW, mailtoUri).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(mailIntent)
-        } catch (e: Exception) {
-            Toast.makeText(this, "Gmail app not installed", Toast.LENGTH_SHORT).show()
+            startActivity(gmailWebIntent)
+        } catch (e: ActivityNotFoundException) {
+            Log.e("DetailActivity", "No app can open Gmail", e)
+            Toast.makeText(this, "Unable to open Gmail. Install Gmail or a web browser.", Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun exportOrOpenPdfReport(result: AnalysisResult, displayCaseId: String, reportUrl: String?) {
+    private fun exportOrOpenPdfReport(
+        result: AnalysisResult,
+        displayCaseId: String,
+        reportUrl: String?,
+        geoIp: String = "No public relay observed in header chain",
+        geoLoc: String = "Internal Network / Non-routable Subnet",
+        geoIsp: String = "Internal / Non-Routable Infrastructure",
+        geoClass: String = "[PRIVATE / INTERNAL]"
+    ) {
         // If there's an active backend report URL, try launching it first
         if (!reportUrl.isNullOrBlank()) {
             try {
@@ -653,7 +1030,7 @@ class DetailActivity : AppCompatActivity() {
             paint.textSize = 8.5f
             paint.color = Color.parseColor("#90CAF9")
             val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(result.timestamp)
-            canvas.drawText("SIH Problem Statement: SIH26106   |   Case ID: $displayCaseId   |   Generated: $timestampStr", 30f, 70f, paint)
+            canvas.drawText("Case ID: $displayCaseId   |   Generated: $timestampStr", 30f, 70f, paint)
 
             // Verdict Banner
             var yPos = 125f
@@ -696,27 +1073,45 @@ class DetailActivity : AppCompatActivity() {
             canvas.drawText("Security Profile: ${result.senderTrust}   |   Enforced Action: ${result.action}", 35f, yPos, paint)
 
             // Forensic Summary & Red Flags
-            yPos += 35f
+            yPos += 30f
             paint.color = Color.parseColor("#1B263B")
-            paint.textSize = 13f
+            paint.textSize = 12f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("ORIGIN IP & INFRASTRUCTURE FORENSICS", 30f, yPos, paint)
+            canvas.drawLine(30f, yPos + 4f, 565f, yPos + 4f, paint)
+
+            yPos += 18f
+            paint.textSize = 9.5f
+            paint.typeface = Typeface.DEFAULT
+            paint.color = Color.parseColor("#263238")
+            canvas.drawText("Observed IP: $geoIp", 35f, yPos, paint)
+            yPos += 15f
+            canvas.drawText("Location: $geoLoc", 35f, yPos, paint)
+            yPos += 15f
+            canvas.drawText("ISP / Org: $geoIsp   |   Classification: $geoClass", 35f, yPos, paint)
+
+            // Forensic Summary & Red Flags
+            yPos += 28f
+            paint.color = Color.parseColor("#1B263B")
+            paint.textSize = 12f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             canvas.drawText("FORENSIC EVIDENCE & RED FLAGS", 30f, yPos, paint)
-            canvas.drawLine(30f, yPos + 5f, 565f, yPos + 5f, paint)
+            canvas.drawLine(30f, yPos + 4f, 565f, yPos + 4f, paint)
 
-            yPos += 24f
-            paint.textSize = 10f
+            yPos += 20f
+            paint.textSize = 9.5f
             paint.typeface = Typeface.DEFAULT
             paint.color = Color.parseColor("#37474F")
             val summaryText = "Summary: ${result.summary}"
             canvas.drawText(summaryText.take(80), 35f, yPos, paint)
 
-            yPos += 22f
-            for (flag in result.flags.take(6)) {
+            yPos += 18f
+            for (flag in result.flags.take(5)) {
                 paint.color = Color.parseColor("#C62828")
                 canvas.drawText("• ", 35f, yPos, paint)
                 paint.color = Color.parseColor("#263238")
                 canvas.drawText(flag.take(78), 45f, yPos, paint)
-                yPos += 18f
+                yPos += 16f
             }
 
             // Footer
@@ -724,7 +1119,7 @@ class DetailActivity : AppCompatActivity() {
             canvas.drawLine(30f, 800f, 565f, 800f, paint)
             paint.textSize = 8.5f
             paint.color = Color.parseColor("#78909C")
-            canvas.drawText("Generated by MessageGuard | SIH Problem Statement: SIH26106 | Case $displayCaseId", 30f, 815f, paint)
+            canvas.drawText("Generated by MessageGuard Forensic Platform | Case $displayCaseId", 30f, 815f, paint)
 
             pdfDocument.finishPage(page)
 

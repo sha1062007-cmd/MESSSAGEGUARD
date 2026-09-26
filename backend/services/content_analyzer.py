@@ -13,6 +13,8 @@ import logging
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 
+from services.domain_intel_service import DomainIntelService
+
 logger = logging.getLogger("ps106.content_analyzer")
 
 
@@ -276,7 +278,12 @@ class ContentAnalyzer:
             )
 
             if not is_domain_trusted:
-                if sender_d_intel.get("is_young_domain"):
+                if sender_d_intel.get("is_brand_impersonation"):
+                    scores.append(90)
+                    risk_factors.append(f"Brand Impersonation / Typosquatting: {sender_d_intel.get('impersonation_reason')}")
+                    detected_categories.add("PHISHING")
+                    detected_categories.add("IMPERSONATION")
+                elif sender_d_intel.get("is_young_domain"):
                     scores.append(85)
                     risk_factors.append(f"Newly registered domain: '{domain_str}' created {age} days ago (<30 days — high risk indicator)")
                     detected_categories.add("SUSPICIOUS")
@@ -289,6 +296,13 @@ class ContentAnalyzer:
                     if domain_str and "." in domain_str and len(domain_str) > 4:
                         scores.append(60)
                         risk_factors.append(f"Domain '{domain_str}' lacks valid DNS MX mail exchange records")
+
+            url_d_intel = domain_intel.get("url_domain") or {}
+            if url_d_intel.get("is_brand_impersonation"):
+                scores.append(90)
+                risk_factors.append(f"Malicious Link Brand Impersonation: {url_d_intel.get('impersonation_reason')}")
+                detected_categories.add("PHISHING")
+                detected_categories.add("IMPERSONATION")
 
         # 1. URL Analysis
         url_results = self._analyze_urls(urls)
@@ -519,10 +533,15 @@ class ContentAnalyzer:
                 is_dangerous_scheme = scheme in ("javascript", "data", "file", "vbscript")
                 is_internal_host = domain_lower in ("localhost", "127.0.0.1", "::1", "0.0.0.0") or domain_lower.startswith(("10.", "192.168.", "169.254."))
 
+                brand_check = DomainIntelService.check_brand_impersonation(domain_lower)
+                is_impersonation = brand_check.get("is_impersonation", False)
+
                 # Risk scoring per URL
                 risk = 0
                 if is_dangerous_scheme:
                     risk = 95
+                elif is_impersonation:
+                    risk = 90
                 elif is_internal_host or ip_based:
                     risk = 90
                 elif is_shortener and suspicious_tld:
@@ -541,6 +560,8 @@ class ContentAnalyzer:
                     "is_trusted": is_trusted,
                     "suspicious_tld": suspicious_tld,
                     "ip_based": ip_based,
+                    "is_brand_impersonation": is_impersonation,
+                    "impersonation_reason": brand_check.get("reason"),
                     "risk_score": risk,
                 })
             except Exception as e:

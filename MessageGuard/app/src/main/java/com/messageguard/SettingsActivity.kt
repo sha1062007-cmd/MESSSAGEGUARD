@@ -12,7 +12,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
 import androidx.core.app.NotificationManagerCompat
 import com.google.android.material.textfield.TextInputEditText
@@ -56,6 +55,10 @@ class SettingsActivity : AppCompatActivity() {
         val layoutApiKeyGroup = findViewById<android.view.View>(R.id.layout_api_key_group)
 
         val cbGmail = findViewById<CheckBox>(R.id.cb_gmail)
+        val cbOutlook = findViewById<CheckBox>(R.id.cb_outlook)
+        val cbYahooMail = findViewById<CheckBox>(R.id.cb_yahoo_mail)
+        val cbSamsungEmail = findViewById<CheckBox>(R.id.cb_samsung_email)
+        val cbProtonMail = findViewById<CheckBox>(R.id.cb_proton_mail)
         val cbWhatsapp = findViewById<CheckBox>(R.id.cb_whatsapp)
         val cbTelegram = findViewById<CheckBox>(R.id.cb_telegram)
         val cbSms = findViewById<CheckBox>(R.id.cb_sms)
@@ -65,13 +68,8 @@ class SettingsActivity : AppCompatActivity() {
         val switchLogAll = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.switch_log_all)
 
         val switchDarkTheme = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.switch_dark_theme)
-        switchDarkTheme.isChecked = prefs.getBoolean(Constants.KEY_THEME_DARK, true)
-        switchDarkTheme.setOnCheckedChangeListener { _, checked ->
-            prefs.edit().putBoolean(Constants.KEY_THEME_DARK, checked).apply()
-            AppCompatDelegate.setDefaultNightMode(
-                if (checked) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-            )
-        }
+        switchDarkTheme.isChecked = true
+        prefs.edit().putBoolean(Constants.KEY_THEME_DARK, true).apply()
 
         val switchFloatingBubble = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.switch_floating_bubble)
         switchFloatingBubble?.isChecked = prefs.getBoolean(Constants.KEY_SHOW_FLOATING_BUBBLE, true)
@@ -193,8 +191,12 @@ class SettingsActivity : AppCompatActivity() {
 
         etApiKey.setText(prefs.getString(Constants.KEY_API_KEY, ""))
         tvResult.text = "Models active: URL CNN + NLP TFLite + XGBoost/BODMAS Ensemble"
-        tvResult.setTextColor(Color.DKGRAY)
+        tvResult.setTextColor(Color.parseColor("#CBD5E1"))
         cbGmail.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_GMAIL, true)
+        cbOutlook.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_OUTLOOK, true)
+        cbYahooMail.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_YAHOO_MAIL, true)
+        cbSamsungEmail.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_SAMSUNG_EMAIL, true)
+        cbProtonMail.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_PROTON_MAIL, true)
         cbWhatsapp.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_WHATSAPP, true)
         cbTelegram.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_TELEGRAM, true)
         cbSms.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_SMS, true)
@@ -202,6 +204,10 @@ class SettingsActivity : AppCompatActivity() {
         cbLinkedin.isChecked = prefs.getBoolean(Constants.KEY_MONITOR_LINKEDIN, true)
 
         listOf(cbGmail to Constants.KEY_MONITOR_GMAIL,
+            cbOutlook to Constants.KEY_MONITOR_OUTLOOK,
+            cbYahooMail to Constants.KEY_MONITOR_YAHOO_MAIL,
+            cbSamsungEmail to Constants.KEY_MONITOR_SAMSUNG_EMAIL,
+            cbProtonMail to Constants.KEY_MONITOR_PROTON_MAIL,
             cbWhatsapp to Constants.KEY_MONITOR_WHATSAPP,
             cbTelegram to Constants.KEY_MONITOR_TELEGRAM,
             cbSms to Constants.KEY_MONITOR_SMS,
@@ -229,7 +235,7 @@ class SettingsActivity : AppCompatActivity() {
             if (bundledKeyPresent) {
                 layoutApiKeyGroup?.visibility = android.view.View.GONE
                 tvResult.text = "Using bundled API configuration"
-                tvResult.setTextColor(Color.parseColor("#34a853"))
+                tvResult.setTextColor(Color.parseColor("#00E676"))
             }
         } catch (_: Exception) {}
 
@@ -259,7 +265,7 @@ class SettingsActivity : AppCompatActivity() {
                 val db = AnalysisHistoryDatabase.getInstance(this@SettingsActivity)
                 db.dao().clearAll()
                 tvResult.text = "History cleared"
-                tvResult.setTextColor(Color.parseColor("#34a853"))
+                tvResult.setTextColor(Color.parseColor("#00E676"))
             }
         }
 
@@ -269,6 +275,9 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateModelConfidenceUi()
+        val btnGrantNls = findViewById<Button?>(R.id.btn_grant_notification_listener)
+        val enabledListeners = NotificationManagerCompat.getEnabledListenerPackages(this)
+        btnGrantNls?.visibility = if (enabledListeners.contains(packageName)) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     private fun updateModelConfidenceUi() {
@@ -313,18 +322,13 @@ class SettingsActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val engine = AIAnalysisEngine(apiKey)
-                engine.analyze(
-                    appSource = "test",
-                    sender = "MessageGuard Test",
-                    subject = "API Key Validation",
-                    messageBody = "This is a test message to verify the API key."
-                )
-                tvResult.text = "✓ API key valid — Connected to Claude"
-                tvResult.setTextColor(Color.parseColor("#34a853"))
+                val analyzer = SpamAnalyzer(this@SettingsActivity)
+                analyzer.validateApiKeyDirect(apiKey)
+                tvResult.text = "✓ API key valid — Connected to Gemini"
+                tvResult.setTextColor(Color.parseColor("#00E676"))
                 prefs.edit().putString(Constants.KEY_API_KEY, apiKey).apply()
             } catch (e: InvalidApiKeyException) {
-                tvResult.text = "✗ Invalid API key (401 Unauthorized)"
+                tvResult.text = "✗ ${e.message}"
                 tvResult.setTextColor(Color.parseColor("#EA4335"))
             } catch (e: Exception) {
                 tvResult.text = "✗ Error: ${e.message}"

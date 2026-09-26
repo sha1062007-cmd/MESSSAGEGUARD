@@ -12,6 +12,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.messageguard.Constants
 import com.messageguard.DetailActivity
 import com.messageguard.R
 import kotlinx.coroutines.*
@@ -19,6 +20,7 @@ import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import org.json.JSONArray
 import java.util.concurrent.TimeUnit
 
 /**
@@ -53,6 +55,13 @@ class GmailNotificationListenerService : NotificationListenerService() {
 
         private val MONITORED_PACKAGES = setOf(
             PKG_GMAIL, PKG_OUTLOOK, PKG_YAHOO, PKG_SAMSUNG, PKG_PROTONMAIL
+        )
+        private val EMAIL_PACKAGE_PREFERENCE_KEYS: Map<String, String> = mapOf(
+            PKG_GMAIL to Constants.KEY_MONITOR_GMAIL,
+            PKG_OUTLOOK to Constants.KEY_MONITOR_OUTLOOK,
+            PKG_YAHOO to Constants.KEY_MONITOR_YAHOO_MAIL,
+            PKG_SAMSUNG to Constants.KEY_MONITOR_SAMSUNG_EMAIL,
+            PKG_PROTONMAIL to Constants.KEY_MONITOR_PROTON_MAIL
         )
 
         // Notification channels
@@ -96,12 +105,28 @@ class GmailNotificationListenerService : NotificationListenerService() {
         if (sbn == null) return
 
         val pkg = sbn.packageName ?: return
-        if (pkg !in MONITORED_PACKAGES) return
+
+        // DEBUG: Log ALL notification packages so we can confirm Gmail's exact package name
+        Log.d(TAG, "onNotificationPosted — pkg=$pkg")
+
+        if (pkg !in MONITORED_PACKAGES) {
+            Log.d(TAG, "Skipping unmonitored package: $pkg")
+            return
+        }
+
+        val prefs = getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
+        val preferenceKey = EMAIL_PACKAGE_PREFERENCE_KEYS[pkg]
+        if (preferenceKey == null || !prefs.getBoolean(preferenceKey, true)) {
+            Log.d(TAG, "Email monitoring disabled for package: $pkg")
+            return
+        }
 
         // Check if service is enabled in preferences
-        val prefs = getSharedPreferences("messageguard_prefs", Context.MODE_PRIVATE)
         val isEnabled = prefs.getBoolean("email_guard_enabled", true)
-        if (!isEnabled) return
+        if (!isEnabled) {
+            Log.w(TAG, "email_guard_enabled is FALSE — email interception disabled. Enable in Settings.")
+            return
+        }
 
         val notification = sbn.notification ?: return
         val extras = notification.extras ?: return
@@ -114,9 +139,12 @@ class GmailNotificationListenerService : NotificationListenerService() {
             ?: ""
 
         // Skip empty or system notifications
-        if (sender.isBlank() && subject.isBlank()) return
+        if (sender.isBlank() && subject.isBlank()) {
+            Log.d(TAG, "Skipping notification with blank sender and subject from $pkg")
+            return
+        }
 
-        Log.d(TAG, "Email intercepted from $pkg | Sender: $sender | Subject: ${subject.take(50)}")
+        Log.i(TAG, "✅ Email intercepted from $pkg | Sender: $sender | Subject: ${subject.take(50)}")
 
         // Step 1: Suppress the original unverified notification
         try {
@@ -140,15 +168,54 @@ class GmailNotificationListenerService : NotificationListenerService() {
                     dismissNotification(scanNotificationId)
                     showVerdictNotification(scanNotificationId, result, sender, subject)
                 }
+
+                // Step 5: Send Resend alert email if threat detected
+                sendAlertFromNotification(result, sender, subject, snippet)
+
             } catch (e: Exception) {
                 Log.e(TAG, "Backend analysis failed: ${e.message}. Falling back to on-device ML model analysis.", e)
                 withContext(Dispatchers.Main) {
                     dismissNotification(scanNotificationId)
                     val localResult = analyzeWithOnDeviceML(sender, subject, snippet)
                     showVerdictNotification(scanNotificationId, localResult, sender, subject)
+
+                    // Step 5: Send Resend alert email if threat detected (on-device path)
+                    sendAlertFromNotification(localResult, sender, subject, snippet)
                 }
             }
         }
+    }
+
+    /**
+     * Sends a Resend alert email when an incoming email is analyzed as SUSPICIOUS or MALICIOUS.
+     * This bridges the notification listener path (which previously had no email alert) with
+     * the EmailAlertManager used by the accessibility and circle-to-scan paths.
+     */
+    private fun sendAlertFromNotification(result: JSONObject, sender: String, subject: String, snippet: String) {
+        val verdict = result.optString("verdict", "SAFE")
+        if (verdict == "SAFE" || verdict == "UNVERIFIED") return   // Only alert on real threats
+
+        val riskScore = result.optInt("risk_score", 0)
+        val summary   = result.optString("summary", "Threat detected in incoming email")
+
+        val analysisResult = com.messageguard.AnalysisResult(
+            verdict        = when (verdict) {
+                "MALICIOUS"  -> com.messageguard.Verdict.DANGER
+                "SUSPICIOUS" -> com.messageguard.Verdict.WARNING
+                else         -> com.messageguard.Verdict.WARNING
+            },
+            summary        = summary,
+            riskScore      = riskScore,
+            sender         = sender,
+            messageSnippet = snippet.take(200),
+            flags          = listOf("Subject: $subject", "Source: Gmail Notification Intercept"),
+            senderTrust    = "Email Notification",
+            timestamp      = System.currentTimeMillis()
+        )
+
+        Log.d(TAG, "Triggering Resend alert for $verdict email from $sender")
+        com.messageguard.EmailAlertManager(applicationContext)
+            .sendAlertIfQualified(analysisResult)
     }
 
     /**
@@ -175,12 +242,24 @@ class GmailNotificationListenerService : NotificationListenerService() {
             com.messageguard.Verdict.DANGER -> 85
             else -> 10
         }
+        // NOTE: On-device fallback has notification metadata only (sender/subject/snippet).
+        // Full email Received headers are not available at the notification layer.
+        // Do NOT fabricate relay IP or geolocation — report honestly as unavailable.
         val json = JSONObject().apply {
             put("verdict", verdictStr)
             put("risk_score", riskScore)
             put("summary", result.summary)
             put("case_id", "LOCAL-${System.currentTimeMillis()}")
+            put("analysis_source", "ON_DEVICE_NOTIFICATION")
             put("risk_color", if (verdictStr == "SAFE") "#4CAF50" else if (verdictStr == "SUSPICIOUS") "#FF9800" else "#F44336")
+            // No relay IP available in notification-only scan — report honestly
+            put("earliest_reliable_observed_ip", JSONObject().apply {
+                put("ip", "ORIGIN_NOT_DETERMINABLE")
+                put("classification", "INTERNAL_OR_UNDETERMINED")
+                put("selection_reason", "Notification scan contains no Received headers. Full email fetch (IMAP/Gmail API) was not available for this scan.")
+            })
+            put("relay_chain", JSONArray())  // No relay data from notification metadata
+            put("selection_reason", "Notification scan: no email Received headers available — relay IP extraction not possible.")
         }
         spamAnalyzer.close()
         return json
@@ -192,7 +271,16 @@ class GmailNotificationListenerService : NotificationListenerService() {
     private fun analyzeWithBackend(sender: String, subject: String, snippet: String): JSONObject {
         val prefs = getSharedPreferences("messageguard_prefs", Context.MODE_PRIVATE)
         val customUrl = prefs.getString("backend_url", null)
-        val candidateUrls = listOfNotNull(customUrl, "http://127.0.0.1:8000", "http://10.0.2.2:8000").distinct()
+        val candidateUrls = listOfNotNull(
+            customUrl,
+            "http://10.1.38.15:8000",
+            "http://10.50.202.92:8000",
+            DEFAULT_BACKEND_URL,
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "http://10.0.2.2:8000",
+            "http://10.1.32.49:8000"
+        ).distinct()
 
         val payload = JSONObject().apply {
             put("sender", sender)
@@ -296,17 +384,16 @@ class GmailNotificationListenerService : NotificationListenerService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // "Open in Gmail" action — deep-link to Gmail filtered by sender
-        val gmailUri = android.net.Uri.parse("googlegmail://co?to=${android.net.Uri.encode(sender)}")
-        val gmailIntent = Intent(Intent.ACTION_VIEW, gmailUri).apply {
+        // "Open in Gmail" action — opens Gmail inbox/conversation list directly (never Compose)
+        val gmailLaunchIntent = packageManager.getLaunchIntentForPackage("com.google.android.gm")?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        } ?: Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_APP_EMAIL)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
-        val hasGmail = try {
-            packageManager.getLaunchIntentForPackage("com.google.android.gm") != null
-        } catch (_: Exception) { false }
         val gmailPendingIntent = PendingIntent.getActivity(
             this, notificationId + 1000,
-            if (hasGmail) gmailIntent else (packageManager.getLaunchIntentForPackage("com.google.android.gm") ?: gmailIntent),
+            gmailLaunchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -316,7 +403,7 @@ class GmailNotificationListenerService : NotificationListenerService() {
             .setSmallIcon(R.drawable.ic_shield)
             .setContentTitle("MessageGuard — $emoji $bandLabel ($riskScore/100)")
             .setContentText("From: $sender")
-            .setSubText("MessageGuard • SIH26106")
+            .setSubText("MessageGuard Threat Intelligence")
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .bigText("$summary\n\nFrom: $sender\nSubject: $subject\nCase: $caseId")

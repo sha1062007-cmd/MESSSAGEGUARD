@@ -3,8 +3,8 @@ package com.messageguard.threatvision
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.messageguard.AnalysisHistoryDatabase
 import com.messageguard.threatvision.data.local.ThreatDao
-import com.messageguard.threatvision.data.local.ThreatDatabase
 import com.messageguard.threatvision.data.local.entity.ThreatScanEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -19,14 +19,14 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ThreatDaoTest {
 
-    private lateinit var database: ThreatDatabase
+    private lateinit var database: AnalysisHistoryDatabase
     private lateinit var dao: ThreatDao
 
     @Before
     fun createDb() {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
-            ThreatDatabase::class.java
+            AnalysisHistoryDatabase::class.java
         ).allowMainThreadQueries().build()
         dao = database.threatDao()
     }

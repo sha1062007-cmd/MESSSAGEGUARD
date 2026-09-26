@@ -2,14 +2,23 @@
 <resources>
 
     <style name="Theme.MessageGuard" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#1a73e8</item>
-        <item name="colorPrimaryVariant">#1557b0</item>
-        <item name="colorOnPrimary">#ffffff</item>
-        <item name="colorSecondary">#34a853</item>
-        <item name="colorOnSecondary">#ffffff</item>
-        <item name="colorSurface">#ffffff</item>
-        <item name="colorOnSurface">#202124</item>
-        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryDark</item>
+        <item name="colorOnPrimary">@color/bg_obsidian_dark</item>
+        <item name="colorSecondary">@color/safe_green</item>
+        <item name="colorOnSecondary">@color/bg_obsidian_dark</item>
+        <item name="colorSurface">@color/surface_obsidian_card</item>
+        <item name="colorOnSurface">@color/text_high_contrast</item>
+        <item name="android:textColorPrimary">@color/text_high_contrast</item>
+        <item name="android:textColorSecondary">@color/text_medium_contrast</item>
+        <item name="android:editTextColor">@color/text_high_contrast</item>
+        <item name="colorControlActivated">@color/colorPrimary</item>
+        <item name="colorControlNormal">@color/text_medium_contrast</item>
+        <item name="android:colorBackground">@color/bg_obsidian_dark</item>
+        <item name="android:windowBackground">@color/bg_obsidian_dark</item>
+        <item name="android:statusBarColor">@color/bg_obsidian_dark</item>
+        <item name="android:navigationBarColor">@color/bg_obsidian_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar" />

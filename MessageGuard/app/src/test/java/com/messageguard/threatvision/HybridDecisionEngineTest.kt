@@ -41,6 +41,29 @@ class HybridDecisionEngineTest {
     }
 
     @Test
+    fun testHighNlpAndCloudScamEvidenceCannotProduceSafeVerdict() {
+        val content = ExtractedContent(
+            rawText = "An unverified email claims a large monetary prize in a special reward " +
+                "program and urges the recipient to claim it immediately. This social engineering " +
+                "message is designed to steal personal or financial information."
+        )
+
+        val result = engine.evaluate(
+            content = content,
+            edgeNlpScore = 0.99f,
+            geminiCloudScore = 95,
+            geminiReason = "Likely scam: prize lure seeking personal or financial information."
+        )
+
+        assertEquals(ThreatVerdict.DANGER, result.verdict)
+        assertEquals(ThreatCategory.SCAM, result.category)
+        assertTrue(result.riskScore >= 70)
+        assertTrue(result.report?.components?.any {
+            it.label == "Cloud AI (Gemini)" && it.score == 95
+        } == true)
+    }
+
+    @Test
     fun testSafeContentVerdict() {
         val content = ExtractedContent(
             rawText = "Hey, let's meet up for coffee tomorrow at 10am."

@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import android.content.Context
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -39,15 +40,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvProtectionStatus: TextView
     private lateinit var viewPulseDot: View
     private lateinit var viewPulseGlow: View
+    private lateinit var tvPermissionWarning: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val prefs = getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
-        val isDark = prefs.getBoolean(Constants.KEY_THEME_DARK, true)
-        AppCompatDelegate.setDefaultNightMode(
-            if (isDark) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-        )
+        prefs.edit().putBoolean(Constants.KEY_THEME_DARK, true).apply()
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
 
         if (!prefs.getBoolean(Constants.KEY_ONBOARDING_COMPLETED, false)) {
             startActivity(Intent(this, OnboardingActivity::class.java))
@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
             val rvRecent = findViewById<RecyclerView>(R.id.rv_recent_scans)
             val btnHistory = findViewById<Button>(R.id.btn_view_history)
             val btnSettings = findViewById<Button>(R.id.btn_settings)
-            val tvPermissionWarning = findViewById<TextView>(R.id.tv_permission_warning)
+            tvPermissionWarning = findViewById(R.id.tv_permission_warning)
 
             // New dashboard components
             val progressSecurityIndex = findViewById<CircularProgressIndicator>(R.id.progress_security_index)
@@ -291,6 +291,9 @@ class MainActivity : AppCompatActivity() {
         if (serviceActuallyRunning) {
             checkAndRequestBatteryExemption()
         }
+        if (::tvPermissionWarning.isInitialized) {
+            checkPermissions(tvPermissionWarning)
+        }
     }
 
     private fun updateProtectionUi(
@@ -354,23 +357,35 @@ class MainActivity : AppCompatActivity() {
     private fun checkPermissions(tvWarning: TextView) {
         val hasOverlay = Settings.canDrawOverlays(this)
         val hasAccessibility = isAccessibilityEnabled()
-        if (!hasOverlay || !hasAccessibility) {
+        val hasNotificationListener = isNotificationListenerEnabled()
+        if (!hasOverlay || !hasAccessibility || !hasNotificationListener) {
             tvWarning.visibility = View.VISIBLE
             tvWarning.text = buildString {
                 if (!hasOverlay) append("⚠ Overlay permission needed. ")
-                if (!hasAccessibility) append("⚠ Accessibility permission needed.")
-            }
+                if (!hasAccessibility) append("⚠ Accessibility permission needed. ")
+                if (!hasNotificationListener) append("⚠ Notification access needed.")
+            }.trim()
             tvWarning.setOnClickListener {
-                if (!hasOverlay) {
-                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:$packageName")))
-                } else {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                when {
+                    !hasOverlay -> {
+                        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName")))
+                    }
+                    !hasAccessibility -> {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+                    !hasNotificationListener -> {
+                        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    }
                 }
             }
         } else {
             tvWarning.visibility = View.GONE
         }
+    }
+
+    private fun isNotificationListenerEnabled(): Boolean {
+        return NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
     }
 
     private fun isAccessibilityEnabled(): Boolean {

@@ -70,5 +70,8 @@ data class AnalysisResult(
 
     // Model disagreement tracking — when models disagree, the uncertaintyReason explains why
     val uncertaintyReason: String? = null,
-    val modelDisagreementScore: Float = 0.0f
+    val modelDisagreementScore: Float = 0.0f,
+
+    // Preserve the backend case response for restoring forensic details from history.
+    val backendAnalysisJson: String = ""
 ) : java.io.Serializable

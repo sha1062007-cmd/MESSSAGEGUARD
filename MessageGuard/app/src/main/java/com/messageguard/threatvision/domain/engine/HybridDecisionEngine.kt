@@ -444,7 +444,8 @@ class HybridDecisionEngine {
             "debited", "credited", "rs.", "inr ", "mandate", "autopay", "account",
             "ifsc", "neft", "imps", "reference no", "ref no", "nrn", "txn",
             "transaction", "available balance", "a/c no", "a/c.", "holder", "nominee",
-            "standing instruction", "billpay", "bill pay", "set for", "scheduled"
+            "standing instruction", "billpay", "bill pay", "set for", "scheduled",
+            "debit card", "credit card", "card", "verification code", "do not share", "otp"
         )
         val hitCount = bankTxTerms.count(text::contains)
         if (hitCount >= 2) return true

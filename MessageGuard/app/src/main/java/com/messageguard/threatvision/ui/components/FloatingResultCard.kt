@@ -144,6 +144,18 @@ object FloatingResultCard {
         val tvReportHeader = cardView.findViewById<TextView>(R.id.tv_report_header)
         val presentation = ScanResultLocalizer.result(context, assessment)
 
+        tvVerdict.text = presentation.verdict
+        tvScore.text = ScanResultLocalizer.riskScore(
+            context,
+            assessment.riskScore,
+            presentation.useTamil
+        )
+        tvReason.text = presentation.summary
+        tvRecommendationsHeader.text = presentation.recommendationsHeader
+        tvRecommendationsHeader.visibility =
+            if (presentation.recommendations.isEmpty()) View.GONE else View.VISIBLE
+        tvRecommendations.text = presentation.recommendations.joinToString("\n") { "• $it" }
+
         // Bind Category with Secondary Categories if present
         val catText = if (assessment.secondaryCategories.isNotEmpty()) {
             "${presentation.category} (+${assessment.secondaryCategories.joinToString { it.name }})"
@@ -245,32 +257,24 @@ object FloatingResultCard {
             btnOpenInGmail?.visibility = View.VISIBLE
             btnOpenInGmail?.setOnClickListener {
                 dismiss(context)
-                // Deep-link to Gmail search filtered by sender address
-                val gmailSearchUri = android.net.Uri.parse(
-                    "googlegmail://co?to=${android.net.Uri.encode(assessment.senderEmail)}"
-                )
-                val gmailSearchIntent = Intent(Intent.ACTION_VIEW, gmailSearchUri).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                // Direct launch of Gmail inbox/conversation list (never Compose)
+                val launchIntent = context.packageManager.getLaunchIntentForPackage("com.google.android.gm")?.apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
-                // Try Gmail deep-link first; if Gmail is not installed fall back to generic mail search
+                if (launchIntent != null) {
+                    try {
+                        context.startActivity(launchIntent)
+                        return@setOnClickListener
+                    } catch (_: Exception) {}
+                }
+                // Generic email inbox fallback
                 try {
-                    context.startActivity(gmailSearchIntent)
-                } catch (e: android.content.ActivityNotFoundException) {
-                    // Fallback: open Gmail inbox via package name
-                    val fallbackIntent = context.packageManager.getLaunchIntentForPackage("com.google.android.gm")?.apply {
+                    val mailIntent = Intent(Intent.ACTION_MAIN).apply {
+                        addCategory(Intent.CATEGORY_APP_EMAIL)
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
-                    if (fallbackIntent != null) {
-                        context.startActivity(fallbackIntent)
-                    } else {
-                        // Last resort: open Play Store Gmail page
-                        val playIntent = Intent(Intent.ACTION_VIEW,
-                            android.net.Uri.parse("market://details?id=com.google.android.gm")).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        try { context.startActivity(playIntent) } catch (_: Exception) {}
-                    }
-                }
+                    context.startActivity(mailIntent)
+                } catch (_: Exception) {}
             }
         } else {
             btnOpenInGmail?.visibility = View.GONE

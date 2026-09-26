@@ -449,7 +449,7 @@ class MediaProjectionService : Service() {
             val result = withContext(Dispatchers.IO) {
                 val textRecognizer = com.messageguard.threatvision.domain.ocr.MlKitTextRecognizer()
                 try {
-                    val db = com.messageguard.threatvision.data.local.ThreatDatabase.getDatabase(applicationContext)
+                    val db = com.messageguard.AnalysisHistoryDatabase.getInstance(applicationContext)
                     val useCase = com.messageguard.threatvision.domain.usecase.AnalyzeSelectedRegionUseCase(
                         textRecognizer,
                         com.messageguard.threatvision.domain.engine.HybridDecisionEngine(),
@@ -473,7 +473,9 @@ class MediaProjectionService : Service() {
                 Log.d(TAG, "Analysis completed: verdict=${result.verdict}. Showing result card overlay.")
                 com.messageguard.threatvision.ui.components.FloatingResultCard.show(this@MediaProjectionService, result)
 
-                // Dispatch Email Alert notification for WARNING and DANGER threats
+                // Dispatch Email Alert + System Notification for WARNING and DANGER threats.
+                // Bug 3 fix: previously only email was sent from this path; system notification
+                // was missing (Accessibility path had it, Circle-to-Scan did not).
                 if (result.isComplete && (result.verdict == com.messageguard.threatvision.data.model.ThreatVerdict.DANGER ||
                     result.verdict == com.messageguard.threatvision.data.model.ThreatVerdict.WARNING)) {
                     try {
@@ -482,7 +484,30 @@ class MediaProjectionService : Service() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to send threat email alert", e)
                     }
+                    // Post system notification so the threat persists in the tray after the
+                    // floating card is dismissed — consistent with AccessibilityEngineService.
+                    try {
+                        val mgVerdict = when (result.verdict) {
+                            com.messageguard.threatvision.data.model.ThreatVerdict.DANGER  -> com.messageguard.Verdict.DANGER
+                            com.messageguard.threatvision.data.model.ThreatVerdict.WARNING -> com.messageguard.Verdict.WARNING
+                            else -> com.messageguard.Verdict.SAFE
+                        }
+                        val notifResult = com.messageguard.AnalysisResult(
+                            verdict       = mgVerdict,
+                            summary       = result.report?.summary ?: result.reason,
+                            messageSnippet = result.reason.take(200),
+                            appSource     = "Circle-to-Scan",
+                            sender        = "Circle-to-Scan",
+                            riskScore     = result.riskScore
+                        )
+                        com.messageguard.ThreatVisionNotifier.notifyThreatResult(
+                            applicationContext, notifResult
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to post system threat notification", e)
+                    }
                 }
+
 
                 if (result.isComplete && (result.verdict == com.messageguard.threatvision.data.model.ThreatVerdict.DANGER ||
                     result.verdict == com.messageguard.threatvision.data.model.ThreatVerdict.WARNING || isVoiceScan)) {

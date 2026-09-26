@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.messageguard.ThreatVisionNotifier
-import com.messageguard.threatvision.data.local.ThreatDatabase
+import com.messageguard.AnalysisHistoryDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -37,8 +37,8 @@ class GmailSyncWorker(
             var dangerCount = 0
             var warningCount = 0
 
-            // Query recent scans from ThreatDatabase
-            val db = ThreatDatabase.getDatabase(context)
+            // Query recent scans from consolidated database
+            val db = AnalysisHistoryDatabase.getInstance(context)
             val recentThreats = db.threatDao().getRecentScans(batchSize)
             for (item in recentThreats) {
                 if (item.verdict.equals("DANGER", ignoreCase = true)) {

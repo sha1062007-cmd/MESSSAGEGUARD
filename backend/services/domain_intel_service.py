@@ -39,6 +39,95 @@ class DomainIntelService:
         "coursera.org", "edx.org", "udemy.com", "zoom.us", "google.co.in",
     }
 
+    PROTECTED_BRANDS = {
+        "microsoft": ["microsoft.com", "office.com", "office365.com", "live.com", "outlook.com", "hotmail.com", "msn.com", "azure.com", "windows.com"],
+        "google": ["google.com", "gmail.com", "youtube.com", "google.co.in", "google.org", "android.com"],
+        "apple": ["apple.com", "icloud.com"],
+        "amazon": ["amazon.com", "amazon.in", "aws.amazon.com"],
+        "paypal": ["paypal.com"],
+        "netflix": ["netflix.com"],
+        "facebook": ["facebook.com", "fb.com", "meta.com", "instagram.com", "whatsapp.com"],
+        "sbi": ["sbi.co.in", "onlinesbi.sbi", "onlinesbi.com"],
+        "hdfc": ["hdfcbank.com"],
+        "icici": ["icicibank.com"],
+        "github": ["github.com"],
+        "linkedin": ["linkedin.com"],
+    }
+
+    @staticmethod
+    def _levenshtein(s1: str, s2: str) -> int:
+        if len(s1) < len(s2):
+            return DomainIntelService._levenshtein(s2, s1)
+        if len(s2) == 0:
+            return len(s1)
+        prev = list(range(len(s2) + 1))
+        for i, c1 in enumerate(s1):
+            curr = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = prev[j + 1] + 1
+                deletions = curr[j] + 1
+                substitutions = prev[j] + (c1 != c2)
+                curr.append(min(insertions, deletions, substitutions))
+            prev = curr
+        return prev[-1]
+
+    @classmethod
+    def check_brand_impersonation(cls, domain: str) -> Dict[str, Any]:
+        """
+        Detect brand impersonation, combosquatting, and typosquatting on email/URL domains.
+        e.g., 'microsoft-support.com' -> impersonates 'microsoft'
+              'paypa1.com' -> typosquats 'paypal'
+              'paypal.com.attacker.com' -> brand in subdomain
+        """
+        if not domain or not isinstance(domain, str):
+            return {"is_impersonation": False}
+        domain_lower = domain.lower().strip()
+        parts = domain_lower.split(".")
+        if len(parts) < 2:
+            return {"is_impersonation": False}
+
+        root_label = parts[-2]
+        subdomain_part = ".".join(parts[:-2]) if len(parts) > 2 else ""
+
+        for brand, official_domains in cls.PROTECTED_BRANDS.items():
+            is_legit = any(
+                domain_lower == od or domain_lower.endswith("." + od)
+                for od in official_domains
+            )
+            if is_legit:
+                return {"is_impersonation": False}
+
+            # 1. Combosquatting: brand appears in root label (e.g. microsoft-support, micro-security, login-google)
+            if brand in root_label:
+                return {
+                    "is_impersonation": True,
+                    "brand": brand,
+                    "type": "COMBOSQUAT",
+                    "reason": f"Domain '{domain_lower}' contains protected brand '{brand}' without authorization."
+                }
+
+            # 2. Typosquatting: edit distance 1 or 2
+            if len(root_label) >= 4 and len(brand) >= 4:
+                dist = cls._levenshtein(root_label, brand)
+                if 1 <= dist <= 2:
+                    return {
+                        "is_impersonation": True,
+                        "brand": brand,
+                        "type": "TYPOSQUAT",
+                        "reason": f"Domain '{domain_lower}' typosquats protected brand '{brand}' (Levenshtein distance {dist})."
+                    }
+
+            # 3. Subdomain brand spoofing
+            if subdomain_part and (brand in subdomain_part or any(od in subdomain_part for od in official_domains)):
+                return {
+                    "is_impersonation": True,
+                    "brand": brand,
+                    "type": "SUBDOMAIN_SPOOF",
+                    "reason": f"Subdomain in '{domain_lower}' mimics protected brand '{brand}'."
+                }
+
+        return {"is_impersonation": False}
+
     def __init__(self, timeout: float = 3.0):
         self.timeout = timeout
         # Pre-seed cache for known-good domains to avoid false 'no MX' positives on DNS timeout
@@ -98,6 +187,9 @@ class DomainIntelService:
         age_days = whois_res.get("age_days")
         is_young_domain = age_days is not None and age_days < 30
 
+        # 4. Evaluate Brand Impersonation / Typosquatting Signal
+        brand_check = self.check_brand_impersonation(clean_domain)
+
         result = {
             "domain": clean_domain,
             "status": "RESOLVED" if dns_res.get("has_mx") or whois_res.get("registrar") else "PARTIAL_OR_UNAVAILABLE",
@@ -109,6 +201,10 @@ class DomainIntelService:
             "mx_records": dns_res.get("mx_records", []),
             "a_records": dns_res.get("a_records", []),
             "whois_status": whois_res.get("status", "UNKNOWN"),
+            "is_brand_impersonation": brand_check.get("is_impersonation", False),
+            "impersonated_brand": brand_check.get("brand"),
+            "impersonation_type": brand_check.get("type"),
+            "impersonation_reason": brand_check.get("reason"),
         }
 
         # Cache valid or attempted resolutions

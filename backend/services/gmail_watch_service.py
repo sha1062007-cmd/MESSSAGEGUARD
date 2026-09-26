@@ -80,8 +80,21 @@ class GmailWatchService:
 
         Returns a dict with parsed email data or None if not found.
         """
+        # Priority 1: If GMAIL_APP_PASSWORD is set, use direct resilient IMAP
+        app_password = os.getenv("GMAIL_APP_PASSWORD")
+        if app_password:
+            imap_result = self._fetch_via_imap(sender, subject)
+            if imap_result:
+                return imap_result
+
         try:
-            service = self._get_service()
+            try:
+                service = self._get_service()
+            except Exception as cred_err:
+                logger.warning(f"OAuth service unavailable ({cred_err}), checking IMAP fallback...")
+                if app_password:
+                    return self._fetch_via_imap(sender, subject)
+                raise cred_err
 
             # Build Gmail search query
             query_parts = []
@@ -238,3 +251,60 @@ class GmailWatchService:
                 seen.add(url)
                 unique_urls.append(url)
         return unique_urls
+
+    def _fetch_via_imap(self, sender: str = "", subject: str = "") -> Optional[Dict[str, Any]]:
+        """
+        Direct RFC 822 email ingestion via IMAP SSL (Alternative 1).
+        Bypasses OAuth tokens, consent screens, and redirect URI mismatches entirely.
+        """
+        app_password = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
+        user_email = os.getenv("GMAIL_USER_EMAIL", "").strip() or "selvavinoth2006@gmail.com"
+        if not app_password:
+            return None
+
+        try:
+            import imaplib
+            logger.info(f"Connecting to IMAP ssl for {user_email}...")
+            mail = imaplib.IMAP4_SSL("imap.gmail.com")
+            mail.login(user_email, app_password)
+            mail.select("INBOX")
+
+            status, data = mail.search(None, "ALL")
+            if status != "OK" or not data or not data[0]:
+                mail.logout()
+                logger.warning("IMAP: No messages found in INBOX")
+                return None
+
+            mail_ids = data[0].split()
+            # Inspect the latest 10 messages from newest to oldest
+            for msg_id in reversed(mail_ids[-10:]):
+                res, msg_data = mail.fetch(msg_id, "(RFC822)")
+                if res != "OK" or not msg_data or not msg_data[0]:
+                    continue
+                raw_bytes = msg_data[0][1]
+                parsed = self._parse_raw_email(raw_bytes)
+                
+                # If subject or sender was specified, attempt match
+                if subject and subject.lower() in parsed.get("subject", "").lower():
+                    mail.logout()
+                    logger.info(f"IMAP: matched message by subject: {subject[:40]}")
+                    return parsed
+                if sender and sender.lower() in parsed.get("sender", "").lower():
+                    mail.logout()
+                    logger.info(f"IMAP: matched message by sender: {sender[:40]}")
+                    return parsed
+
+            # If no exact match among latest 10, take the most recent email
+            if mail_ids:
+                res, msg_data = mail.fetch(mail_ids[-1], "(RFC822)")
+                mail.logout()
+                if res == "OK" and msg_data and msg_data[0]:
+                    logger.info("IMAP: returning most recent INBOX message")
+                    return self._parse_raw_email(msg_data[0][1])
+
+            mail.logout()
+        except Exception as e:
+            logger.error(f"IMAP fetch failed: {e}", exc_info=True)
+
+        return None
+

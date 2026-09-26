@@ -59,10 +59,8 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Read theme settings first to prevent flicker
         val prefs = getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
-        val isDark = prefs.getBoolean(Constants.KEY_THEME_DARK, true)
-        AppCompatDelegate.setDefaultNightMode(
-            if (isDark) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-        )
+        prefs.edit().putBoolean(Constants.KEY_THEME_DARK, true).apply()
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding)

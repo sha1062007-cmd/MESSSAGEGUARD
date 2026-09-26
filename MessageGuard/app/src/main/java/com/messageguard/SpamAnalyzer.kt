@@ -18,6 +18,8 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
+class InvalidApiKeyException(message: String = "Invalid API key — check Settings") : Exception(message)
+
 class SpamAnalyzer(context: Context) : AutoCloseable {
 
     data class AnalysisOutcome(
@@ -49,16 +51,19 @@ class SpamAnalyzer(context: Context) : AutoCloseable {
     // ONNX Model sessions:
     // 1. url_detector.onnx (Tabular XGBoost URL classification)
     // 2. calibrated_voting_0..2.onnx (Calibrated Voting Ensemble)
-    // 3. full_bodmas.onnx (BODMAS structural anomaly model)
+    //
+    // NOTE — full_bodmas.onnx is intentionally NOT loaded. The model expects a 2381-feature
+    // input; only 14 features can be extracted from available message data. Zero-padding the
+    // remaining 2367 dimensions produces near-random output that actively degrades ensemble
+    // accuracy. The bodmasScore signal is provided by a heuristic floor in scoreBodmasModel()
+    // instead (see the coerceAtLeast block). Re-enable by implementing the full feature
+    // extractor from the original training script and uncommenting the load + call blocks.
     private var urlSession: OrtSession? = null
     private var urlInputName: String? = null
     private var votingSessions: List<Pair<OrtSession, String>> = emptyList()
-    private var bodmasSession: OrtSession? = null
-    private var bodmasInputName: String? = null
     private val urlLock = Any()
     private val urlSessionLock = Any()
     private val votingLock = Any()
-    private val bodmasLock = Any()
 
     // TFLite NLP model — custom-trained text_nlp_model.tflite (432KB, 96.5% acc, 34.8K messages)
     private var nlpInterpreter: Interpreter? = null
@@ -320,7 +325,8 @@ class SpamAnalyzer(context: Context) : AutoCloseable {
         // Load ONNX sessions:
         // 1. url_detector.onnx (Tabular XGBoost URL classification)
         // 2. calibrated_voting_0/1/2.onnx (Calibrated Multi-Model Ensemble)
-        // 3. full_bodmas.onnx (BODMAS structural anomaly model)
+        //
+        // full_bodmas.onnx is NOT loaded — see field declarations above for why.
         if (ortEnvironment != null) {
             try {
                 val urlBytes = loadAssetBytes(appContext, "url_detector.onnx")
@@ -340,14 +346,6 @@ class SpamAnalyzer(context: Context) : AutoCloseable {
                     Log.w("SpamAnalyzer", "calibrated_voting_$idx.onnx not loaded (${e.message})")
                     null
                 }
-            }
-
-            try {
-                val bodmasBytes = loadAssetBytes(appContext, "full_bodmas.onnx")
-                bodmasSession = ortEnvironment!!.createSession(bodmasBytes, OrtSession.SessionOptions())
-                bodmasInputName = bodmasSession?.inputNames?.firstOrNull()
-            } catch (e: Exception) {
-                Log.w("SpamAnalyzer", "full_bodmas.onnx not loaded: ${e.message}")
             }
         }
 
@@ -743,6 +741,9 @@ class SpamAnalyzer(context: Context) : AutoCloseable {
         val adjustedBs = if (hasShortLink && textThreatSignals.isCorroborated) {
             indicators.add("Short-link mask with urgency language")
             explainabilityItems.add(ExplainabilityItem("URL Shortener + Urgency", "Heuristic: Masked URL combined with urgency triggers is a strong phishing indicator"))
+            // ← THIS is the actual bodmasScore signal source. full_bodmas.onnx is not used
+            // (14/2381 features available → near-random output). The heuristic floor is the
+            // intentional replacement. W_BODMAS (18.5%) is the weight applied to THIS value.
             bS.coerceAtLeast(0.5f)   // floor at 0.5 — contributes ~9 pts to mlPct via BODMAS weight
         } else bS
 
@@ -931,6 +932,39 @@ class SpamAnalyzer(context: Context) : AutoCloseable {
 
     suspend fun requestGeminiDirectPublic(msg: String, mlIndicators: List<String>): ClaudeDecision? =
         requestGeminiDirect(msg, mlIndicators)
+
+    /**
+     * Validates a user-provided or custom Gemini API key directly against Google's servers.
+     * Bypasses in-memory score caching and tests network connectivity fresh.
+     * Used by [SettingsActivity] to confirm API key validity.
+     *
+     * @throws InvalidApiKeyException if Google returns 400, 401, or 403
+     * @throws Exception on network failure or quota exhaustion (429)
+     */
+    suspend fun validateApiKeyDirect(testKey: String): Boolean = withContext(Dispatchers.IO) {
+        val trimmedKey = testKey.trim()
+        if (trimmedKey.isBlank()) throw IllegalArgumentException("API key cannot be empty")
+
+        // Direct discovery ping to Gemini API — bypasses cache entirely and tests the raw key against Google's servers
+        val discoveryUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=$trimmedKey"
+        val request = Request.Builder().url(discoveryUrl).get().build()
+
+        try {
+            geminiClient.newCall(request).execute().use { response ->
+                val code = response.code
+                when (code) {
+                    200 -> true
+                    400, 401, 403 -> throw InvalidApiKeyException("Invalid or unauthorized API key (HTTP $code)")
+                    429 -> throw Exception("API quota exceeded for this key (HTTP 429). Please retry later.")
+                    else -> throw Exception("Gemini service returned HTTP $code: ${response.message}")
+                }
+            }
+        } catch (e: InvalidApiKeyException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            throw Exception("Network connection failed: ${e.localizedMessage ?: "Unable to reach Google servers"}")
+        }
+    }
 
     private suspend fun requestGeminiDirect(msg: String, mlIndicators: List<String>): ClaudeDecision? {
         val key = BuildConfig.GEMINI_API_KEY.trim()
@@ -1282,40 +1316,9 @@ class SpamAnalyzer(context: Context) : AutoCloseable {
                         }
                     }
 
-                    // 3. Full BODMAS Model (full_bodmas.onnx)
-                    // TODO (Phase 3 Bug 5 fix — re-enable when Q1 is answered):
-                    // full_bodmas.onnx expects a 2381-feature input but only 14 features are
-                    // currently populated; the remaining 2367 dimensions are zeroed. Running the
-                    // model in this state produces near-random output that degrades ensemble
-                    // accuracy. The session is still loaded (close() still works), but it is
-                    // excluded from candidateScores until the feature spec is confirmed.
-                    // Restore by un-commenting the block below and implementing the 2381-feature
-                    // extraction from the model training script.
-                    /*
-                    val bSession = bodmasSession
-                    val bInput = bodmasInputName
-                    if (bSession != null && bInput != null) {
-                        val bodmasFeat = FloatArray(2381)
-                        System.arraycopy(feat, 0, bodmasFeat, 0, feat.size)
-                        OnnxTensor.createTensor(env, arrayOf(bodmasFeat)).use { bT ->
-                            synchronized(bodmasLock) {
-                                try {
-                                    bSession.run(mapOf(bInput to bT)).use { res ->
-                                        val outputVal = res[1].value
-                                        if (outputVal is List<*>) {
-                                            val map = outputVal.firstOrNull() as? Map<*, *>
-                                            val s = (map?.get(1L) as? Number)?.toFloat()
-                                                ?: (map?.get(1) as? Number)?.toFloat()
-                                            if (s != null) candidateScores.add(s)
-                                        }
-                                    }
-                                } catch (be: Exception) {
-                                    Log.w("SpamAnalyzer", "BODMAS model step failed", be)
-                                }
-                            }
-                        }
-                    }
-                    */
+                    // full_bodmas.onnx is not called here — bodmasScore is provided by the
+                    // heuristic floor (coerceAtLeast) in the ensemble weighting block above.
+                    // See field declarations for the full explanation.
 
                     score = if (candidateScores.isNotEmpty()) {
                         candidateScores.average().toFloat()
@@ -1385,7 +1388,7 @@ class SpamAnalyzer(context: Context) : AutoCloseable {
         urlInterpreter?.close()
         nlpInterpreter?.close()
         urlSession?.close()
-        bodmasSession?.close()
+        // bodmasSession removed — full_bodmas.onnx is not loaded (see field declarations)
         votingSessions.forEach { runCatching { it.first.close() } }
         ortEnvironment?.close()
         runCatching { geminiClient.dispatcher.executorService.shutdown() }

@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#f8f9fa">
+    android:background="@color/bg_obsidian_dark">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -66,9 +66,11 @@
             android:id="@+id/switch_dark_theme"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Dark Mode Theme (Cyber Obsidian)"
+            android:text="Dark Mode Theme (Cyber Obsidian) — Always On"
             android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="8dp"
+            android:checked="true"
+            android:enabled="false"/>
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/switch_floating_bubble"
@@ -116,7 +118,7 @@
             android:text="Auto-Delete Logs Retention"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="#5f6368"
+            android:textColor="@color/text_medium_contrast"
             android:layout_marginBottom="8dp"/>
 
         <com.google.android.material.chip.ChipGroup
@@ -163,6 +165,9 @@
             android:layout_height="wrap_content"
             app:cardElevation="2dp"
             app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="@color/surface_obsidian_card"
+            app:strokeColor="@color/surface_obsidian_stroke"
+            app:strokeWidth="1dp"
             android:layout_marginBottom="24dp">
 
             <LinearLayout
@@ -177,14 +182,14 @@
                     android:text="Adaptive Trust Engine (Live Model Weights)"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:textColor="#16202C" />
+                    android:textColor="@color/text_high_contrast" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Weights dynamically tune from user feedback (Clamped: 5%–60%)"
                     android:textSize="11sp"
-                    android:textColor="#5F6368"
+                    android:textColor="@color/text_medium_contrast"
                     android:layout_marginTop="2dp"
                     android:layout_marginBottom="12dp" />
 
@@ -201,7 +206,7 @@
                         android:layout_weight="1"
                         android:text="URL CNN Model"
                         android:textSize="12sp"
-                        android:textColor="#3C4043" />
+                        android:textColor="@color/text_high_contrast" />
                     <TextView
                         android:id="@+id/tv_weight_url"
                         android:layout_width="wrap_content"
@@ -209,7 +214,7 @@
                         android:text="35%"
                         android:textSize="12sp"
                         android:textStyle="bold"
-                        android:textColor="#1A73E8" />
+                        android:textColor="#60A5FA" />
                 </LinearLayout>
                 <ProgressBar
                     android:id="@+id/progress_weight_url"
@@ -218,7 +223,7 @@
                     android:layout_height="6dp"
                     android:progress="35"
                     android:max="100"
-                    android:progressTint="#1A73E8"
+                    android:progressTint="#60A5FA"
                     android:layout_marginBottom="10dp" />
 
                 <!-- Text NLP Weight -->
@@ -234,7 +239,7 @@
                         android:layout_weight="1"
                         android:text="Text NLP Model"
                         android:textSize="12sp"
-                        android:textColor="#3C4043" />
+                        android:textColor="@color/text_high_contrast" />
                     <TextView
                         android:id="@+id/tv_weight_nlp"
                         android:layout_width="wrap_content"
@@ -267,7 +272,7 @@
                         android:layout_weight="1"
                         android:text="BODMAS Core Model"
                         android:textSize="12sp"
-                        android:textColor="#3C4043" />
+                        android:textColor="@color/text_high_contrast" />
                     <TextView
                         android:id="@+id/tv_weight_bodmas"
                         android:layout_width="wrap_content"
@@ -275,7 +280,7 @@
                         android:text="25%"
                         android:textSize="12sp"
                         android:textStyle="bold"
-                        android:textColor="#AA00FF" />
+                        android:textColor="#D58CFF" />
                 </LinearLayout>
                 <ProgressBar
                     android:id="@+id/progress_weight_bodmas"
@@ -284,7 +289,7 @@
                     android:layout_height="6dp"
                     android:progress="25"
                     android:max="100"
-                    android:progressTint="#AA00FF"
+                    android:progressTint="#D58CFF"
                     android:layout_marginBottom="10dp" />
 
                 <!-- Typosquat Weight -->
@@ -300,7 +305,7 @@
                         android:layout_weight="1"
                         android:text="Typosquatting Engine"
                         android:textSize="12sp"
-                        android:textColor="#3C4043" />
+                        android:textColor="@color/text_high_contrast" />
                     <TextView
                         android:id="@+id/tv_weight_typosquat"
                         android:layout_width="wrap_content"
@@ -333,7 +338,7 @@
                         android:layout_weight="1"
                         android:text="Sender Reputation"
                         android:textSize="12sp"
-                        android:textColor="#3C4043" />
+                        android:textColor="@color/text_high_contrast" />
                     <TextView
                         android:id="@+id/tv_weight_reputation"
                         android:layout_width="wrap_content"
@@ -366,7 +371,7 @@
 
         <TextView android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Monitor Apps"
+            android:text="Email Platforms"
             android:textSize="16sp"
             android:textStyle="bold"
             android:layout_marginTop="24dp"
@@ -377,6 +382,37 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Gmail"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_outlook"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Microsoft Outlook"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_yahoo_mail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Yahoo Mail"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_samsung_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Samsung Email"/>
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_proton_mail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Proton Mail"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Other Monitored Apps"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_high_contrast"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
         <com.google.android.material.checkbox.MaterialCheckBox
             android:id="@+id/cb_whatsapp"
             android:layout_width="match_parent"

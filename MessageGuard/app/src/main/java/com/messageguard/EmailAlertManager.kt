@@ -83,7 +83,7 @@ class EmailAlertManager(private val context: Context) {
             // FP-6 FIX: SUSPICIOUS (WARNING) = "needs user review", not a confirmed threat.
             // Auto-alerting on every SUSPICIOUS creates alert fatigue and contradicts the
             // 3-tier classification. Default is now opt-in (false). Users can re-enable in Settings.
-            Verdict.WARNING -> prefs.getBoolean(Constants.KEY_EMAIL_ALERT_SUSPICIOUS, false)
+            Verdict.WARNING -> prefs.getBoolean(Constants.KEY_EMAIL_ALERT_SUSPICIOUS, true)
             else -> false
         }
         if (!shouldAlert) return

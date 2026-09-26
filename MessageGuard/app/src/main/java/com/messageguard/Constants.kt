@@ -5,6 +5,10 @@ object Constants {
     const val KEY_API_KEY = "claude_api_key"
     const val KEY_SERVICE_ENABLED = "service_enabled"
     const val KEY_MONITOR_GMAIL = "monitor_gmail"
+    const val KEY_MONITOR_OUTLOOK = "monitor_outlook"
+    const val KEY_MONITOR_YAHOO_MAIL = "monitor_yahoo_mail"
+    const val KEY_MONITOR_SAMSUNG_EMAIL = "monitor_samsung_email"
+    const val KEY_MONITOR_PROTON_MAIL = "monitor_proton_mail"
     const val KEY_MONITOR_WHATSAPP = "monitor_whatsapp"
     const val KEY_MONITOR_TELEGRAM = "monitor_telegram"
     const val KEY_MONITOR_SMS = "monitor_sms"
@@ -37,6 +41,15 @@ object Constants {
 
     // Default normalized weights summing to 1.000f (25.9%, 29.6%, 18.5%, 14.8%, 11.2%)
     // Verified: 0.259f + 0.296f + 0.185f + 0.148f + 0.112f = 1.000f (abs(sum - 1.0f) < 0.001f epsilon tolerance)
+    //
+    // Signal sources (as of this version):
+    //   URL     (0.259) — url_detector.onnx + calibrated_voting_0/1/2.onnx
+    //   NLP     (0.296) — text_nlp_model.tflite + TF-IDF vocab
+    //   BODMAS  (0.185) — HEURISTIC FLOOR ONLY (short-link + urgency pattern).
+    //                     full_bodmas.onnx is NOT loaded: 14/2381 features available → near-random
+    //                     output. See SpamAnalyzer field declarations + scoreBodmasModel().
+    //   TYPOSQUAT (0.148) — Levenshtein/IDN homograph domain analysis
+    //   REPUTATION (0.112) — Sender reputation scoring
     const val DEFAULT_WEIGHT_URL = 0.259f
     const val DEFAULT_WEIGHT_NLP = 0.296f
     const val DEFAULT_WEIGHT_BODMAS = 0.185f
